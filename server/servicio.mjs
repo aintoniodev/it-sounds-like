@@ -8,6 +8,11 @@ import { pipeline } from "@huggingface/transformers";
 
 const NUCLEO = new Set(["titulo", "artista", "fecha", "spotify"]);
 const MODELO = "Xenova/multilingual-e5-small";
+// umbral de honestidad: por debajo, el catálogo no tiene nada fuerte para
+// la consulta y la UI lo dice en vez de disfrazar un mal match. Calibrado
+// con datos: las 19 consultas reales de la suite dan top-1 ≥ 0.834; las
+// consultas fuera de tema (recetas, hola hola) quedan en 0.800–0.822.
+export const UMBRAL = 0.83;
 
 // el embedder real: transformers.js en Node (q8); fallback a la versión
 // cuantizada por defecto si el dtype no está disponible

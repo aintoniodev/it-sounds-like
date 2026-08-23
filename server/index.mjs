@@ -1,18 +1,28 @@
 // Entrada del producto (npm start): indexa el catálogo con el servicio de
-// búsqueda y sirve la web + el API. Todo local, sin cuentas.
+// búsqueda, resuelve portadas, vigila la carpeta y sirve la web + el API.
+// Todo local, sin cuentas.
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { watch } from "node:fs";
-import { join, basename, extname } from "node:path";
+import { join, basename, extname, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { crearServicio } from "./servicio.mjs";
+import { crearServicio, UMBRAL } from "./servicio.mjs";
 import { crearPortadas } from "./portadas.mjs";
 
 const CATALOGO = fileURLToPath(new URL("../catalogo", import.meta.url));
-const WEB = fileURLToPath(new URL("../web/index.html", import.meta.url));
+const DIST = fileURLToPath(new URL("../web/dist", import.meta.url));
 const CACHE_PORTADAS = fileURLToPath(new URL("../.cache/portadas", import.meta.url));
 const PUERTO = Number(process.env.PORT ?? 3000);
-const TIPOS = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
+const MIME = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript",
+  ".css": "text/css",
+  ".woff2": "font/woff2",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".svg": "image/svg+xml",
+};
+const TIPOS_PORTADA = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
 
 console.log(`indexando ${CATALOGO} (la primera vez descarga el modelo, ~120 MB)…`);
 const servicio = await crearServicio({ carpeta: CATALOGO });
@@ -52,37 +62,82 @@ watch(CATALOGO, (_evento, nombre) => {
   }, 200);
 });
 
+// ficha pública para el API: todo menos el vector
+function publica(f) {
+  const { vector, ...resto } = f;
+  return resto;
+}
+
 const server = createServer(async (req, res) => {
   try {
-    if (req.method === "GET" && req.url === "/") {
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      return res.end(await readFile(WEB, "utf8"));
+    const url = new URL(req.url, `http://localhost:${PUERTO}`);
+
+    if (req.method === "GET" && url.pathname === "/") {
+      const html = await readFile(join(DIST, "index.html"), "utf8");
+      res.writeHead(200, { "content-type": MIME[".html"] });
+      return res.end(html);
     }
-    if (req.method === "GET" && req.url.startsWith("/portadas/")) {
-      const archivo = basename(req.url);
+
+    // estáticos del build de la web (assets con hash, fuentes)
+    if (req.method === "GET" && (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/fonts/"))) {
+      const ruta = normalize(join(DIST, decodeURIComponent(url.pathname)));
+      if (!ruta.startsWith(DIST + sep)) {
+        res.writeHead(403);
+        return res.end();
+      }
+      try {
+        const bytes = await readFile(ruta);
+        res.writeHead(200, { "content-type": MIME[extname(ruta).toLowerCase()] ?? "application/octet-stream", "cache-control": "immutable" });
+        return res.end(bytes);
+      } catch {
+        res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+        return res.end("no existe");
+      }
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/portadas/")) {
+      const archivo = basename(url.pathname);
       try {
         const bytes = await readFile(join(CACHE_PORTADAS, archivo));
-        res.writeHead(200, { "content-type": TIPOS[extname(archivo).toLowerCase()] ?? "image/jpeg", "cache-control": "immutable" });
+        res.writeHead(200, { "content-type": TIPOS_PORTADA[extname(archivo).toLowerCase()] ?? "image/jpeg", "cache-control": "immutable" });
         return res.end(bytes);
       } catch {
         res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
         return res.end("sin portada");
       }
     }
-    if (req.method === "POST" && req.url === "/api/buscar") {
+
+    if (req.method === "POST" && url.pathname === "/api/buscar") {
       const cuerpo = await leerCuerpo(req);
       const { q, filtros, top } = JSON.parse(cuerpo);
       if (typeof q !== "string" || !q.trim()) {
         res.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
         return res.end("falta la consulta (q)");
       }
-      const resultados = (await servicio.buscar(q, { filtros, top })).map(({ ficha, score }) => {
-        const { vector, ...publica } = ficha;
-        return { ...publica, score };
-      });
+      const resultados = (await servicio.buscar(q, { filtros, top })).map(({ ficha, score }) => ({
+        ...publica(ficha),
+        score,
+      }));
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-      return res.end(JSON.stringify({ resultados }));
+      return res.end(JSON.stringify({ resultados, umbral: UMBRAL }));
     }
+
+    if (req.method === "GET" && url.pathname === "/api/fichas") {
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      return res.end(JSON.stringify({ fichas: servicio.fichas.map(({ slug, titulo, artista, cover }) => ({ slug, titulo, artista, cover })) }));
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/dimensiones") {
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      return res.end(JSON.stringify(servicio.dimensiones()));
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/sorpresa") {
+      const ficha = servicio.fichas[Math.floor(Math.random() * servicio.fichas.length)];
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      return res.end(JSON.stringify({ ficha: publica(ficha) }));
+    }
+
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     res.end("no existe");
   } catch (e) {
