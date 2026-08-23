@@ -1,7 +1,7 @@
 # El sitio público (prototipo)
 
 Type: prototype
-Status: open
+Status: claimed
 Labels: wayfinder:prototype
 Blocked by: 02, 04
 
