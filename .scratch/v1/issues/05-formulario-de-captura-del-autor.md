@@ -6,10 +6,10 @@ Parent: spec en `.scratch/it-sounds-like/spec.md`
 
 **Blocked by:** 02.
 
-**Status:** ready-for-agent
+**Status**: done
 
-- [ ] una ficha guardada desde el formulario aparece en el catálogo con nombre `AAAA-MM-DD-artista-cancion.md` y núcleo válido
-- [ ] el cuerpo llega precargado con la plantilla y es editable
-- [ ] las claves custom inventadas en el formulario quedan en el front-matter y funcionan como filtros en el buscador
-- [ ] guardar con el núcleo incompleto se rechaza con mensaje claro y no escribe nada
-- [ ] guardar → buscar y encontrar, sin recargar ni reiniciar
+- [x] una ficha guardada desde el formulario aparece en el catálogo con nombre `AAAA-MM-DD-artista-cancion.md` y núcleo válido
+- [x] el cuerpo llega precargado con la plantilla y es editable
+- [x] las claves custom inventadas en el formulario quedan en el front-matter y funcionan como filtros en el buscador
+- [x] guardar con el núcleo incompleto se rechaza con mensaje claro y no escribe nada
+- [x] guardar → buscar y encontrar, sin recargar ni reiniciar

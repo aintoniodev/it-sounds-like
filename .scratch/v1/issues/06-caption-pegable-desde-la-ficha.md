@@ -6,8 +6,8 @@ Parent: spec en `.scratch/it-sounds-like/spec.md`
 
 **Blocked by:** 04, 05.
 
-**Status:** ready-for-agent
+**Status**: done
 
-- [ ] el botón copia al portapapeles el caption completo de la ficha mostrada
-- [ ] snapshots del render para fichas representativas: completa, sin secciones (solo intro), sin link
-- [ ] cero emojis en el texto generado
+- [x] el botón copia al portapapeles el caption completo de la ficha mostrada
+- [x] snapshots del render para fichas representativas: completa, sin secciones (solo intro), sin link
+- [x] cero emojis en el texto generado

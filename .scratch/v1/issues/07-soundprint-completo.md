@@ -6,10 +6,10 @@ Parent: spec en `.scratch/it-sounds-like/spec.md`
 
 **Blocked by:** 04.
 
-**Status:** ready-for-agent
+**Status**: done
 
-- [ ] buscar alimenta el soundprint sin ninguna acción del buscador
-- [ ] dos búsquedas distintas con resultados solapados producen lienzos claramente distintos (el issue conocido, corregido)
-- [ ] cerrar el navegador y volver días después conserva el historial
-- [ ] el export PNG composiciona lienzo + palabras + ficha técnica de dimensiones + enlace al canal del autor
-- [ ] verificación manual del look (decisión de la spec: UI se verifica a mano)
+- [x] buscar alimenta el soundprint sin ninguna acción del buscador
+- [x] dos búsquedas distintas con resultados solapados producen lienzos claramente distintos (el issue conocido, corregido)
+- [x] cerrar el navegador y volver días después conserva el historial
+- [x] el export PNG composiciona lienzo + palabras + ficha técnica de dimensiones + enlace al canal del autor
+- [x] verificación manual del look (decisión de la spec: UI se verifica a mano)

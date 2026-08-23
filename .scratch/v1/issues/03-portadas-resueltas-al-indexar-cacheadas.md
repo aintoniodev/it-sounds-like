@@ -6,10 +6,10 @@ Parent: spec en `.scratch/it-sounds-like/spec.md`
 
 **Blocked by:** 01.
 
-**Status:** ready-for-agent
+**Status**: done
 
-- [ ] ficha con link de Spotify muestra la portada del oEmbed sin configurar ninguna key
-- [ ] ficha sin link obtiene artwork de iTunes Search en la primera indexación
-- [ ] una segunda indexación (incluida cold start del servidor) no hace ninguna petición externa: todo sale del caché
-- [ ] con la red cortada después del primer índice, buscar y ver portadas sigue funcionando
-- [ ] un fallo de red al resolver no rompe la indexación: la ficha entra sin portada y se reintenta en la próxima pasada
+- [x] ficha con link de Spotify muestra la portada del oEmbed sin configurar ninguna key
+- [x] ficha sin link obtiene artwork de iTunes Search en la primera indexación
+- [x] una segunda indexación (incluida cold start del servidor) no hace ninguna petición externa: todo sale del caché
+- [x] con la red cortada después del primer índice, buscar y ver portadas sigue funcionando
+- [x] un fallo de red al resolver no rompe la indexación: la ficha entra sin portada y se reintenta en la próxima pasada

@@ -6,10 +6,10 @@ Parent: spec en `.scratch/it-sounds-like/spec.md`
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status**: done
 
-- [ ] `npm start` desde la raíz arranca índice y web en un solo comando (solo `npm install` previo)
-- [ ] una consulta desde la página devuelve el top 3 con título, artista y texto de la ficha
-- [ ] ficha con núcleo incompleto se rechaza con error que nombra el fichero; `_plantilla.md` no aparece nunca en resultados
-- [ ] las claves custom (energia, momento_del_dia…) llegan al servicio como dimensiones, numéricas y de vocabulario
-- [ ] la suite de `eval/` corre contra el servicio real y su recall@3 queda en 0.75 o más (suelo medido del cuerpo completo sin prepend: 0.754)
+- [x] `npm start` desde la raíz arranca índice y web en un solo comando (solo `npm install` previo)
+- [x] una consulta desde la página devuelve el top 3 con título, artista y texto de la ficha
+- [x] ficha con núcleo incompleto se rechaza con error que nombra el fichero; `_plantilla.md` no aparece nunca en resultados
+- [x] las claves custom (energia, momento_del_dia…) llegan al servicio como dimensiones, numéricas y de vocabulario
+- [x] la suite de `eval/` corre contra el servicio real y su recall@3 queda en 0.75 o más (suelo medido del cuerpo completo sin prepend: 0.754)

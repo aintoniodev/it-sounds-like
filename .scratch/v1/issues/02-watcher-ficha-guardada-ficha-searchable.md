@@ -6,9 +6,9 @@ Parent: spec en `.scratch/it-sounds-like/spec.md`
 
 **Blocked by:** 01.
 
-**Status:** ready-for-agent
+**Status**: done
 
-- [ ] ficha nueva creada con el servidor arrancado aparece en resultados en segundos (embed de una ficha, no del catálogo entero)
-- [ ] editar el cuerpo re-embedea solo esa ficha; editar solo el front-matter no re-embedea (el vector depende del cuerpo y se reutiliza)
-- [ ] borrar una ficha la saca del índice sin reiniciar
-- [ ] el log del servidor dice qué ficha se re-procesa, no "reindexando todo"
+- [x] ficha nueva creada con el servidor arrancado aparece en resultados en segundos (embed de una ficha, no del catálogo entero)
+- [x] editar el cuerpo re-embedea solo esa ficha; editar solo el front-matter no re-embedea (el vector depende del cuerpo y se reutiliza)
+- [x] borrar una ficha la saca del índice sin reiniciar
+- [x] el log del servidor dice qué ficha se re-procesa, no "reindexando todo"

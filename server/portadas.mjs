@@ -7,6 +7,8 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 
 const ITUNES = "https://itunes.apple.com/search";
+// timeout corto: sin red (o con una API caída) la indexación sigue su curso
+const FUERA = { signal: AbortSignal.timeout(8000) };
 
 export function crearPortadas({ dir, fetcher = fetch }) {
   mkdirSync(dir, { recursive: true });
@@ -21,15 +23,18 @@ export function crearPortadas({ dir, fetcher = fetch }) {
   async function urlDePortada(ficha) {
     if (ficha.spotify) {
       try {
-        const r = await fetcher(`https://open.spotify.com/oembed?url=${encodeURIComponent(ficha.spotify)}`);
+        const r = await fetcher(
+          `https://open.spotify.com/oembed?url=${encodeURIComponent(ficha.spotify)}`,
+          FUERA,
+        );
         const url = (await r.json()).thumbnail_url;
         if (url) return url;
       } catch {
-        // link roto o privado: cae a iTunes
+        // link roto, privado o sin red: cae a iTunes
       }
     }
     const term = encodeURIComponent(`${ficha.titulo} ${ficha.artista}`);
-    const r = await fetcher(`${ITUNES}?term=${term}&entity=song&limit=1&country=ES`);
+    const r = await fetcher(`${ITUNES}?term=${term}&entity=song&limit=1&country=ES`, FUERA);
     const art = (await r.json()).results?.[0]?.artworkUrl100;
     return art ? art.replace("100x100", "600x600") : null;
   }
@@ -44,7 +49,7 @@ export function crearPortadas({ dir, fetcher = fetch }) {
       url = await urlDePortada(ficha);
       if (!url) return { cover: null, deRed: true };
       const ext = /\.(png|webp)/.test(url) ? url.match(/\.(png|webp)$/)[1] : "jpg";
-      const bytes = Buffer.from(await (await fetcher(url)).arrayBuffer());
+      const bytes = Buffer.from(await (await fetcher(url, FUERA)).arrayBuffer());
       const archivo = `${createHash("sha1").update(clave).digest("hex").slice(0, 16)}.${ext}`;
       writeFileSync(join(dir, archivo), bytes);
       cache[clave] = archivo;
