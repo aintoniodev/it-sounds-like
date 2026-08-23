@@ -1,7 +1,7 @@
 # Límites reales de Cloudflare para nuestra carga
 
 Type: research
-Status: open
+Status: claimed
 Labels: wayfinder:research
 
 ## Question
