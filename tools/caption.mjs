@@ -47,7 +47,7 @@ function render(f) {
   L.push("");
   if (porque.length > primeraFrase.length) L.push(porque.slice(primeraFrase.length).trim(), "");
   if (paraCuando) L.push(`Para cuando: ${lower(paraCuando)}`, "");
-  if (escucha) L.push(`🎧 Escucha: ${lower(escucha)}`, "");
+  if (escucha) L.push(`Escucha: ${lower(escucha)}`, "");
   L.push(`${f.meta.titulo} — ${f.meta.artista}`);
   if (f.meta.spotify) L.push(String(f.meta.spotify).replace(/^"|"$/g, ""));
   L.push("");
