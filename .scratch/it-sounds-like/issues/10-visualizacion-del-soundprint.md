@@ -1,7 +1,7 @@
 # Visualización del soundprint
 
 Type: prototype
-Status: open
+Status: claimed
 Labels: wayfinder:prototype
 Blocked by: 08, 09
 
