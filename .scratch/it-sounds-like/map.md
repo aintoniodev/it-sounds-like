@@ -22,8 +22,10 @@ Un producto completo corriendo en local: fichas de canciones escritas por un ing
 
 <!-- una línea por ticket cerrado: gist + link -->
 
+- [Formato de ficha](issues/01-formato-de-ficha.md): markdown por ficha, front-matter YAML con núcleo obligatorio (titulo/artista/fecha) + claves inventables, cuerpo libre con secciones sugeridas (Por qué / Para cuándo / Escucha); nombres AAAA-MM-DD-artista-cancion.md; término "ficha"; voz validada. Detalle y prototipo: rama `prototype/formato-de-ficha`.
 - [Inventario de embeddings](issues/02-inventario-de-embeddings.md): default local `multilingual-e5-small` (MIT, 470 MB) vía transformers.js con cosine en memoria; plan B `bge-m3` en Ollama (respaldo API gratis: Cloudflare 10k neurons/día); jina-v3 mejor en ES pero licencia NC; sin vector store para cientos de fichas. Informe: `research/embeddings` → `docs/research/embeddings.md`.
 - [Resolver referencia de canción](issues/03-resolver-referencia-de-cancion.md): sin OAuth — oEmbed de Spotify (`open.spotify.com/oembed`, sin key, da título+portada pero NO artista) para fichas con link; fallback texto libre con iTunes Search (1 request lo da todo) o MusicBrainz+CAA; resolver en indexado y cachear en la ficha. Informe: `research/referencia-cancion` → `docs/research/referencia-cancion.md`.
+- [Seed del catálogo](issues/05-seed-del-catalogo.md): 23 fichas desechables en `catalogo/` cubriendo ánimos, géneros (pop a clásica), épocas (1801–2020) y claves custom como dimensiones (`energia` en dos extremos).
 
 ## Not yet specified
 
