@@ -21,6 +21,7 @@ La web pública de it sounds like corriendo gratis en Cloudflare: buscador está
 <!-- una línea por ticket cerrado: gist + link -->
 
 - [Límites reales de Cloudflare para nuestra carga](issues/01-limites-reales-de-cloudflare-para-nuestra-carga.md): el free tier aguanta el perfil (neurons al 1,6 %, requests al 6 %, Pages al 6 %); feedback en D1, no KV (KV roza sus 1.000 writes/día). Informe: rama `research/cf-limits`, `docs/research/cf-limits.md`.
+- [Embeddings del deploy: bge-m3 en build](issues/04-embeddings-del-deploy-bge-m3-en-build.md): fichas embedeadas en CI llamando a Workers AI (identidad cross-runtime no garantizada; cache por hash + sonda de drift); eval local bge-m3 0.719 < suelo e5 0.754, decisión de modelo abierta hasta la pasada contra Workers AI. Informe: rama `research/embeddings-deploy`, `docs/research/embeddings-deploy.md`.
 
 ## Not yet specified
 
