@@ -1,7 +1,7 @@
 # Qué se embedea y con qué peso
 
 Type: grilling
-Status: open
+Status: claimed
 Labels: wayfinder:grilling
 Blocked by: 02
 
