@@ -22,11 +22,13 @@ La web pública de it sounds like corriendo gratis en Cloudflare: buscador está
 
 - [Límites reales de Cloudflare para nuestra carga](issues/01-limites-reales-de-cloudflare-para-nuestra-carga.md): el free tier aguanta el perfil (neurons al 1,6 %, requests al 6 %, Pages al 6 %); feedback en D1, no KV (KV roza sus 1.000 writes/día). Informe: rama `research/cf-limits`, `docs/research/cf-limits.md`.
 - [Embeddings del deploy: bge-m3 en build](issues/04-embeddings-del-deploy-bge-m3-en-build.md): fichas embedeadas en CI llamando a Workers AI (identidad cross-runtime no garantizada; cache por hash + sonda de drift); eval local bge-m3 0.719 < suelo e5 0.754, decisión de modelo abierta hasta la pasada contra Workers AI. Informe: rama `research/embeddings-deploy`, `docs/research/embeddings-deploy.md`.
+- [Señal de feedback](issues/02-senal-de-feedback-que-como-y-privacidad.md): "clavo"/"no me encaja" por resultado; evento {query en claro, ficha, acción, ts, rank_pre_boost, visitante-hash localStorage}; sin IP/cookies/UA; retención 90 días con cron; feedback en **D1** (KV roza 1.000 writes/día); privacidad de cinco líneas en el footer.
+- [Re-ranking con feedback](issues/03-re-ranking-con-feedback-primer-mecanismo.md): memory-based en el Worker — coseno + α·Σ wᵢ·feedbackᵢ (wᵢ = sim(query,pasada) decaída); negativa pesa más solo en su contexto; shrinkage α·n/(n+K) sin flags; replay en eval/ con suelo 0.754; rank pre-boost auditado por SQL.
 
 ## Not yet specified
 
-- **Activación del re-ranking**: cuánto feedback acumulado hace falta antes de que el mecanismo se encienda (y si empieza apagado detrás de flag) — niebla hasta ver la forma de la señal (ticket 03).
-- **Verificación de calidad del modelo público**: re-ejecutar la suite de `eval/` con bge-m3 para confirmar que el suelo de recall no baja — se afila cuando el ticket 04 defina la vía de embeddings del deploy.
+- **ε-greedy**: solo si la telemetría (rank pre-boost) muestra rich-get-richer.
+- **Elección definitiva del modelo público**: la suite local dio 0.719 con bge-m3 (ONNX) contra el suelo 0.754 de e5-small; la pasada que vale es contra Workers AI real, tras el wizard del ticket 05. Si no supera el suelo, decide el usuario (aceptar la diferencia por cliente ligero, o híbrido).
 - **Analytics del sitio**: probablemente nada o mínimo; se decide al cerrar el mapa.
 
 ## Out of scope
