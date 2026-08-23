@@ -17,6 +17,7 @@ Un producto completo corriendo en local: fichas de canciones escritas por un ing
 - **Fuente de verdad**: carpeta de ficheros, una ficha por canción, esquema mínimo obligatorio + campos opcionales sin schema fijo (la plantilla es dato). Un formulario de captura, si existe, escribe ficheros a esa carpeta — nunca a una BBDD propia.
 - **Resultado de búsqueda** (decidido): top 3 ajustable; tarjeta con título+artista, la descripción del autor, y link opcional a Spotify si la ficha lo lleva (nunca obligatorio).
 - **Skills por tipo de ticket**: `research` → Skill "research"; `prototype` → Skill "prototype"; `grilling` → Skills "grilling" + "domain-modeling".
+- **Unslop en todos lados** (preferencia permanente): fichas, captions, UI, textos del producto. Sin emojis, sin relleno, voz seca y concreta.
 
 ## Decisions so far
 
@@ -28,6 +29,7 @@ Un producto completo corriendo en local: fichas de canciones escritas por un ing
 - [Seed del catálogo](issues/05-seed-del-catalogo.md): 23 fichas desechables en `catalogo/` cubriendo ánimos, géneros (pop a clásica), épocas (1801–2020) y claves custom como dimensiones (`energia` en dos extremos).
 - [Definir soundprint](issues/04-definir-soundprint.md): firma del que busca hecha con las palabras del autor (significado) sobre dimensiones (estructura) y lienzo generativo; input pasivo de los matches, por navegador sin cuentas; panel + export PNG (enlace con el canal IG del autor); el nombre es "soundprint".
 - [Qué se embedea y con qué peso](issues/09-que-se-embedea-y-con-que-peso.md): resuelto midiendo (suite en `eval/`, recall@3): un embedding por ficha del cuerpo completo, sin pesos por sección (0.75 vs 0.58–0.65 de las ponderadas) y sin prepend del núcleo (0.754 vs 0.693); claves custom = dimensiones de filtrado, no texto; query = texto libre + filtros auto-descubiertos.
+- [Export de caption para Instagram](issues/06-export-de-caption-para-instagram.md): borrador pegable renderizado desde la ficha (gancho = primera frase, cuerpo, Para cuando, Escucha, firma, link, 4 hashtags); el autor retoca antes de publicar; cero emojis, unslop. Prototipo: `tools/caption.mjs`.
 
 ## Not yet specified
 
