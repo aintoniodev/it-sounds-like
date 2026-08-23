@@ -1,7 +1,7 @@
 # Prototipo de UI de búsqueda
 
 Type: prototype
-Status: open
+Status: claimed
 Labels: wayfinder:prototype
 Blocked by: 01, 05
 
