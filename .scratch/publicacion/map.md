@@ -20,6 +20,8 @@ La web pública de it sounds like corriendo gratis en Cloudflare: buscador está
 
 <!-- una línea por ticket cerrado: gist + link -->
 
+- [Límites reales de Cloudflare para nuestra carga](issues/01-limites-reales-de-cloudflare-para-nuestra-carga.md): el free tier aguanta el perfil (neurons al 1,6 %, requests al 6 %, Pages al 6 %); feedback en D1, no KV (KV roza sus 1.000 writes/día). Informe: rama `research/cf-limits`, `docs/research/cf-limits.md`.
+
 ## Not yet specified
 
 - **Activación del re-ranking**: cuánto feedback acumulado hace falta antes de que el mecanismo se encienda (y si empieza apagado detrás de flag) — niebla hasta ver la forma de la señal (ticket 03).
