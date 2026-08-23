@@ -32,18 +32,17 @@ Un producto completo corriendo en local: fichas de canciones escritas por un ing
 - [Qué se embedea y con qué peso](issues/09-que-se-embedea-y-con-que-peso.md): resuelto midiendo (suite en `eval/`, recall@3): un embedding por ficha del cuerpo completo, sin pesos por sección (0.75 vs 0.58–0.65 de las ponderadas) y sin prepend del núcleo (0.754 vs 0.693); claves custom = dimensiones de filtrado, no texto; query = texto libre + filtros auto-descubiertos.
 - [Export de caption para Instagram](issues/06-export-de-caption-para-instagram.md): borrador pegable renderizado desde la ficha (gancho = primera frase, cuerpo, Para cuando, Escucha, firma, link, 4 hashtags); el autor retoca antes de publicar; cero emojis, unslop. Prototipo: `tools/caption.mjs`.
 - [Prototipo de UI de búsqueda](issues/07-prototipo-de-ui-de-busqueda.md): gana **Escenario** (portadas 3D, sala oscura, panel lateral); tipografía Departure Mono para el producto; cartel y constelación descartadas sin diagnosticar sus errores. Prototipo completo: rama `prototype/ui-de-busqueda`.
+- [DoD: qué incluye "producto completo local"](issues/08-dod-producto-completo-local.md): servidor Node (`npm start`) con watcher incremental sobre `catalogo/`; buscador Escenario con filtros, línea honesta bajo umbral y "sorpréndeme"; formulario de captura que escribe fichas; botón copiar caption; soundprint COMPLETO en v1 (vía ticket 10); sin cuentas, sin red, privado. Escala pública y RL/feedback: esfuerzo nuevo, no v1.
 
 ## Not yet specified
 
-- **Trayectoria temporal del soundprint** (la "línea de plegamiento"): además de la foto de estado actual, una línea que se va formando con el historial de matches: convergencia hacia tu sonido (embudo de plegamiento), quiebros cuando la vida re-ordena el gusto, y periodicidad de hábitos (domingos de calma, viernes de energia). Necesita semanas de uso para existir, y depende de la visualización estática (ticket 10). Motivación de diseño anotada por el usuario: la línea en formación incentiva usar el producto X días para ver el espectáculo armarse. El DoD decide si es v1 o v2.
-- **Calidad de búsqueda**: umbral mínimo / qué pasa cuando no hay buen match, tuning del modelo, y el efecto imán de fichas ricas en vocabulario musical (Malamente en 8+ top-3 con falsos positivos claros). Suite en `eval/` para iterar con datos.
-- **Formulario de captura dentro del producto**: alcance según el DoD.
-- **Reindexado**: comando manual vs watcher — según el DoD.
+- **Trayectoria temporal del soundprint** (la "línea de plegamiento"): además de la foto de estado actual, una línea que se va formando con el historial de matches: convergencia hacia tu sonido (embudo de plegamiento), quiebros cuando la vida re-ordena el gusto, y periodicidad de hábitos (domingos de calma, viernes de energia). Necesita semanas de uso para existir. Decidido en el DoD: v2.
+- **Calidad de búsqueda**: tuning del modelo y el efecto imán de fichas ricas en vocabulario musical (Malamente en 8+ top-3 con falsos positivos claros). Umbral de no-match y línea honesta ya decididos en el DoD. Suite en `eval/` para iterar con datos.
 - **Enriquecimiento de fichas** (género, año, audio-features externas) — solo si la calidad de matching lo pide.
 
 ## Out of scope
 
-- **Hacer el producto público** (dominio, hosting, bio link): v1 es local por decisión del usuario.
+- **Hacer el producto público** (dominio, hosting, bio link): v1 es local por decisión del usuario. El usuario planteó publicarlo (gratis, Vercel/Cloudflare) con login de "oráculo" para el autor, escala de 1000 visitas/día y feedback/RL de usuarios: si se retoma, es un esfuerzo nuevo con su propio mapa (hosting + auth/roles + feedback→aprendizaje), no una ampliación de este.
 - **El canal Instagram del primo** (pitch, cadencia, copyright de lo que él cuelgue): su canal, no este producto. La plantilla maleable y el export de caption le sirven de apoyo, pero el esfuerzo de contenido no es este mapa.
 - **Migración a BD NoSQL**: planteable cuando la escala lo pida; la carpeta de ficheros es la fuente de verdad de v1.
 - **Multiplataforma de contenido** (TikTok, YouTube Shorts, etc.).
