@@ -1,0 +1,48 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: deps de eval
+        working-directory: eval
+        run: npm ci --ignore-scripts
+
+      - name: suite contra Workers AI (suelo 0.754)
+        working-directory: eval
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: node harness-workers.mjs
+
+      - name: construir desplegable público
+        working-directory: eval
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: node build-public.mjs
+
+      - name: desplegar a Cloudflare Pages
+        working-directory: eval
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          PAGES_PROJECT: ${{ vars.PAGES_PROJECT || 'it-sounds-like' }}
+        run: npx --yes wrangler pages deploy ../dist-public --project-name="${PAGES_PROJECT}"
