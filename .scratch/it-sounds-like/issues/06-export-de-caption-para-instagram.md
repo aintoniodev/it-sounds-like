@@ -1,7 +1,7 @@
 # Export de caption para Instagram
 
 Type: prototype
-Status: open
+Status: claimed
 Labels: wayfinder:prototype
 Blocked by: 01
 
