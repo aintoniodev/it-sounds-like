@@ -2,6 +2,8 @@
 // búsqueda y sirve la web + el API. Todo local, sin cuentas.
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
+import { watch } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crearServicio } from "./servicio.mjs";
 
@@ -12,6 +14,22 @@ const PUERTO = Number(process.env.PORT ?? 3000);
 console.log(`indexando ${CATALOGO} (la primera vez descarga el modelo, ~120 MB)…`);
 const servicio = await crearServicio({ carpeta: CATALOGO });
 console.log(`${servicio.fichas.length} fichas indexadas`);
+
+// vigilancia del catálogo: alta, cambio o borrado de una ficha se refleja
+// en la búsqueda sin reiniciar; una ficha rota se rechaza y el índice queda intacto
+let reloj;
+watch(CATALOGO, (_evento, nombre) => {
+  if (!nombre?.endsWith(".md")) return;
+  clearTimeout(reloj);
+  reloj = setTimeout(async () => {
+    try {
+      const r = await servicio.actualizar(join(CATALOGO, nombre));
+      if (r.accion !== "ignorada") console.log(`watcher: ${r.accion} — ${r.slug}`);
+    } catch (e) {
+      console.error(`watcher: ${e.message}`);
+    }
+  }, 200);
+});
 
 const server = createServer(async (req, res) => {
   try {

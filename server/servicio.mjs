@@ -2,7 +2,7 @@
 // Un embedding por ficha del cuerpo completo (prefijo passage:, sin prepend
 // del núcleo — medido en eval/, recall@3 0.754); cosine = dot sobre
 // vectores normalizados. La suite de eval/ corre contra este módulo.
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 import { pipeline } from "@huggingface/transformers";
 
@@ -99,6 +99,32 @@ export async function crearServicio({ carpeta, embed }) {
   return {
     fichas,
     dimensiones: () => calcularDimensiones(fichas),
+
+    // procesa UNA ficha del catálogo (alta, cambio o borrado) sin tocar
+    // el resto del índice; el vector solo se recalcula si el cuerpo cambió
+    async actualizar(ruta) {
+      const nombre = basename(ruta);
+      if (!nombre.endsWith(".md") || nombre.startsWith("_")) return { accion: "ignorada", slug: nombre };
+      const slug = nombre.replace(/\.md$/, "");
+      const i = fichas.findIndex((f) => f.slug === slug);
+      if (!existsSync(ruta)) {
+        if (i === -1) return { accion: "ignorada", slug };
+        fichas.splice(i, 1);
+        return { accion: "borrada", slug };
+      }
+      const nueva = parseFicha(slug, readFileSync(ruta, "utf8"));
+      if (!nueva.titulo || !nueva.artista || !nueva.fecha) {
+        throw new Error(`ficha con el núcleo incompleto (titulo/artista/fecha): ${slug}`);
+      }
+      if (i !== -1 && fichas[i].body === nueva.body) {
+        fichas[i] = { ...nueva, vector: fichas[i].vector };
+        return { accion: "meta", slug };
+      }
+      nueva.vector = (await embedBatch([`passage: ${nueva.body}`]))[0];
+      if (i === -1) fichas.push(nueva);
+      else fichas[i] = nueva;
+      return { accion: i === -1 ? "creada" : "re-embedeada", slug };
+    },
 
     async buscar(consulta, { filtros = {}, top = 3 } = {}) {
       const qvec = (await embedBatch([`query: ${consulta}`]))[0];
