@@ -1,7 +1,7 @@
 # Inventario de embeddings: modelos locales multilingües + APIs gratuitas
 
 Type: research
-Status: open
+Status: claimed
 Labels: wayfinder:research
 
 ## Question
