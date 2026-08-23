@@ -3,17 +3,35 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { watch } from "node:fs";
-import { join } from "node:path";
+import { join, basename, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crearServicio } from "./servicio.mjs";
+import { crearPortadas } from "./portadas.mjs";
 
 const CATALOGO = fileURLToPath(new URL("../catalogo", import.meta.url));
 const WEB = fileURLToPath(new URL("../web/index.html", import.meta.url));
+const CACHE_PORTADAS = fileURLToPath(new URL("../.cache/portadas", import.meta.url));
 const PUERTO = Number(process.env.PORT ?? 3000);
+const TIPOS = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
 
 console.log(`indexando ${CATALOGO} (la primera vez descarga el modelo, ~120 MB)…`);
 const servicio = await crearServicio({ carpeta: CATALOGO });
 console.log(`${servicio.fichas.length} fichas indexadas`);
+
+// portadas: se resuelven ahora (una vez) y se sirven en local — la búsqueda
+// no toca la red. Pausa de cortesía entre peticiones la primera vez.
+const portadas = crearPortadas({ dir: CACHE_PORTADAS });
+let deRed = 0;
+for (const ficha of servicio.fichas) {
+  const r = await portadas.resolver(ficha);
+  ficha.cover = r.cover;
+  if (r.deRed) {
+    deRed++;
+    await new Promise((res) => setTimeout(res, 400));
+  }
+}
+const conPortada = servicio.fichas.filter((f) => f.cover).length;
+console.log(`portadas: ${conPortada}/${servicio.fichas.length} resueltas (${deRed} consultadas en red, el resto del caché)`);
 
 // vigilancia del catálogo: alta, cambio o borrado de una ficha se refleja
 // en la búsqueda sin reiniciar; una ficha rota se rechaza y el índice queda intacto
@@ -24,7 +42,10 @@ watch(CATALOGO, (_evento, nombre) => {
   reloj = setTimeout(async () => {
     try {
       const r = await servicio.actualizar(join(CATALOGO, nombre));
-      if (r.accion !== "ignorada") console.log(`watcher: ${r.accion} — ${r.slug}`);
+      if (r.accion === "ignorada") return;
+      const ficha = servicio.fichas.find((f) => f.slug === r.slug);
+      if (ficha) ficha.cover = (await portadas.resolver(ficha)).cover;
+      console.log(`watcher: ${r.accion} — ${r.slug}`);
     } catch (e) {
       console.error(`watcher: ${e.message}`);
     }
@@ -36,6 +57,17 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && req.url === "/") {
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       return res.end(await readFile(WEB, "utf8"));
+    }
+    if (req.method === "GET" && req.url.startsWith("/portadas/")) {
+      const archivo = basename(req.url);
+      try {
+        const bytes = await readFile(join(CACHE_PORTADAS, archivo));
+        res.writeHead(200, { "content-type": TIPOS[extname(archivo).toLowerCase()] ?? "image/jpeg", "cache-control": "immutable" });
+        return res.end(bytes);
+      } catch {
+        res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+        return res.end("sin portada");
+      }
     }
     if (req.method === "POST" && req.url === "/api/buscar") {
       const cuerpo = await leerCuerpo(req);

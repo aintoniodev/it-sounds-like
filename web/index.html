@@ -71,14 +71,23 @@
           head.append(titulo, score);
           const cuerpo = document.createElement("pre");
           cuerpo.textContent = f.body;
+          if (f.cover) {
+            const img = document.createElement("img");
+            img.src = f.cover;
+            img.width = 56;
+            img.height = 56;
+            img.alt = "";
+            img.style.cssText = "float:right;margin:0 0 8px 12px;border:1px solid #2a2a2e";
+            art.append(head, img, cuerpo);
+          } else {
+            art.append(head, cuerpo);
+          }
           if (f.spotify) {
             const link = document.createElement("a");
             link.href = f.spotify;
             link.target = "_blank";
             link.textContent = f.spotify;
-            art.append(head, cuerpo, link);
-          } else {
-            art.append(head, cuerpo);
+            art.append(link);
           }
           return art;
         }),
