@@ -30,6 +30,7 @@ Un producto completo corriendo en local: fichas de canciones escritas por un ing
 
 ## Not yet specified
 
+- **Trayectoria temporal del soundprint** (la "línea de plegamiento"): además de la foto de estado actual, una línea que se va formando con el historial de matches: convergencia hacia tu sonido (embudo de plegamiento), quiebros cuando la vida re-ordena el gusto, y periodicidad de hábitos (domingos de calma, viernes de energia). Necesita semanas de uso para existir, y depende de la visualización estática (ticket 10). Motivación de diseño anotada por el usuario: la línea en formación incentiva usar el producto X días para ver el espectáculo armarse. El DoD decide si es v1 o v2.
 - **Calidad de búsqueda**: umbral mínimo / qué pasa cuando no hay buen match, tuning del modelo — niebla hasta que existan seed del catálogo y modelo elegido.
 - **Formulario de captura dentro del producto**: alcance según el DoD.
 - **Reindexado**: comando manual vs watcher — según el DoD.
