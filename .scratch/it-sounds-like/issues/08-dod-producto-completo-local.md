@@ -1,7 +1,7 @@
 # DoD: qué incluye "producto completo local"
 
 Type: grilling
-Status: open
+Status: claimed
 Labels: wayfinder:grilling
 Blocked by: 01, 04
 
