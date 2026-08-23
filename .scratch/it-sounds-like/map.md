@@ -22,6 +22,8 @@ Un producto completo corriendo en local: fichas de canciones escritas por un ing
 
 <!-- una línea por ticket cerrado: gist + link -->
 
+- [Inventario de embeddings](issues/02-inventario-de-embeddings.md): default local `multilingual-e5-small` (MIT, 470 MB) vía transformers.js con cosine en memoria; plan B `bge-m3` en Ollama (respaldo API gratis: Cloudflare 10k neurons/día); jina-v3 mejor en ES pero licencia NC; sin vector store para cientos de fichas. Informe: `research/embeddings` → `docs/research/embeddings.md`.
+
 ## Not yet specified
 
 - **Calidad de búsqueda**: umbral mínimo / qué pasa cuando no hay buen match, tuning del modelo — niebla hasta que existan seed del catálogo y modelo elegido.
