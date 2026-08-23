@@ -27,3 +27,7 @@ _Avoid_: campos requeridos, schema fijo
 **Soundprint**:
 La firma sonora de quien busca, pintada con las palabras del autor sobre las fichas que le han matcheado. La del autor es la misma pieza aplicada a su catálogo entero.
 _Avoid_: musicprint, huella musical, perfil
+
+**Dimensión**:
+Clave de ficha con valor numérico o de pequeño vocabulario (energia, momento_del_dia, nivel_de_fiesta). No se embedea: filtra el retrieve y estructura el soundprint.
+_Avoid_: metadato, tag, atributo

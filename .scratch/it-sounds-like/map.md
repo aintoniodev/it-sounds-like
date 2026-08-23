@@ -11,7 +11,7 @@ Un producto completo corriendo en local: fichas de canciones escritas por un ing
 - **Autor de las fichas**: ingeniero de sonido y profesor. Las descripciones tienen columna vertebral emocional/práctica ("qué me hace sentir", "para qué momento") con acentos técnicos accesibles (reference track, "qué escuchar en 1:32") — centrado en canciones para personas, no en detalle instrumental.
 - **Stack decidido**: TypeScript + ThreeUI (componentes Three.js e shaders interactivos) para la UI.
 - **El usuario es AI Engineer**: las decisiones de modelos y embeddings son suyas. No grillar sobre lo básico; entregar inventarios y datos, decide él.
-- **Embeddings**: modelo local Y APIs gratuitas — ambas vías en el inventario.
+- **Embeddings** (decidido en el 09, medido): `multilingual-e5-small` local (transformers.js, q8, prefijos query:/passage:), cosine en memoria. Un embedding por ficha con el cuerpo completo, sin prepend del núcleo y sin pesos por sección. Suite re-ejecutable en `eval/`.
 - **Idioma**: descripciones en español; los embeddings deben manejar ES bien.
 - **Privacidad / local-first**: las descripciones son sentimientos personales; nada público en v1.
 - **Fuente de verdad**: carpeta de ficheros, una ficha por canción, esquema mínimo obligatorio + campos opcionales sin schema fijo (la plantilla es dato). Un formulario de captura, si existe, escribe ficheros a esa carpeta — nunca a una BBDD propia.
@@ -27,11 +27,12 @@ Un producto completo corriendo en local: fichas de canciones escritas por un ing
 - [Resolver referencia de canción](issues/03-resolver-referencia-de-cancion.md): sin OAuth — oEmbed de Spotify (`open.spotify.com/oembed`, sin key, da título+portada pero NO artista) para fichas con link; fallback texto libre con iTunes Search (1 request lo da todo) o MusicBrainz+CAA; resolver en indexado y cachear en la ficha. Informe: `research/referencia-cancion` → `docs/research/referencia-cancion.md`.
 - [Seed del catálogo](issues/05-seed-del-catalogo.md): 23 fichas desechables en `catalogo/` cubriendo ánimos, géneros (pop a clásica), épocas (1801–2020) y claves custom como dimensiones (`energia` en dos extremos).
 - [Definir soundprint](issues/04-definir-soundprint.md): firma del que busca hecha con las palabras del autor (significado) sobre dimensiones (estructura) y lienzo generativo; input pasivo de los matches, por navegador sin cuentas; panel + export PNG (enlace con el canal IG del autor); el nombre es "soundprint".
+- [Qué se embedea y con qué peso](issues/09-que-se-embedea-y-con-que-peso.md): resuelto midiendo (suite en `eval/`, recall@3): un embedding por ficha del cuerpo completo, sin pesos por sección (0.75 vs 0.58–0.65 de las ponderadas) y sin prepend del núcleo (0.754 vs 0.693); claves custom = dimensiones de filtrado, no texto; query = texto libre + filtros auto-descubiertos.
 
 ## Not yet specified
 
 - **Trayectoria temporal del soundprint** (la "línea de plegamiento"): además de la foto de estado actual, una línea que se va formando con el historial de matches: convergencia hacia tu sonido (embudo de plegamiento), quiebros cuando la vida re-ordena el gusto, y periodicidad de hábitos (domingos de calma, viernes de energia). Necesita semanas de uso para existir, y depende de la visualización estática (ticket 10). Motivación de diseño anotada por el usuario: la línea en formación incentiva usar el producto X días para ver el espectáculo armarse. El DoD decide si es v1 o v2.
-- **Calidad de búsqueda**: umbral mínimo / qué pasa cuando no hay buen match, tuning del modelo — niebla hasta que existan seed del catálogo y modelo elegido.
+- **Calidad de búsqueda**: umbral mínimo / qué pasa cuando no hay buen match, tuning del modelo, y el efecto imán de fichas ricas en vocabulario musical (Malamente en 8+ top-3 con falsos positivos claros). Suite en `eval/` para iterar con datos.
 - **Formulario de captura dentro del producto**: alcance según el DoD.
 - **Reindexado**: comando manual vs watcher — según el DoD.
 - **Enriquecimiento de fichas** (género, año, audio-features externas) — solo si la calidad de matching lo pide.

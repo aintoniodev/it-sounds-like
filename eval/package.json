@@ -1,0 +1,11 @@
+{
+  "name": "it-sounds-like-eval",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eval": "node harness.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.0"
+  }
+}
