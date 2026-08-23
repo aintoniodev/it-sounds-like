@@ -3,6 +3,9 @@
 // contra el modelo real lo mide eval/recall.mjs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { crearServicio } from "../server/servicio.mjs";
 
 const OK = new URL("./fixtures/ok", import.meta.url).pathname;
@@ -63,4 +66,31 @@ test("los filtros por dimensión acotan el retrieve antes de rankear", async () 
   const enMomento = await s.buscar("fiesta", { filtros: { en: { momento_del_dia: ["noche"] } } });
   assert.equal(enMomento.length, 1);
   assert.equal(enMomento[0].ficha.slug, "2026-01-01-loris-para-dormir");
+});
+
+test("un filtro exige la dimensión: una ficha sin la clave queda fuera", async () => {
+  const s = await crearServicio({ carpeta: OK, embed });
+  // ninguna ficha tiene la clave "tematica": el filtro la exige y vacía el retrieve
+  const sinClave = await s.buscar("dormir", { filtros: { en: { tematica: ["noche"] } } });
+  assert.equal(sinClave.length, 0);
+});
+
+test("filtro mínimo numérico: energia alta se puede pedir", async () => {
+  const s = await crearServicio({ carpeta: OK, embed });
+  const alta = await s.buscar("dormir", { filtros: { min: { energia: 8 } } });
+  assert.ok(alta.every((r) => r.ficha.dims.energia >= 8));
+  assert.ok(alta.every((r) => r.ficha.slug === "2026-01-02-sonora-para-fiestar"));
+});
+
+test("claves con mayúsculas o números y valores negativos se parsean", async () => {
+  const carpeta = mkdtempSync(join(tmpdir(), "isl-parser-"));
+  writeFileSync(
+    join(carpeta, "2026-03-01-rara.md"),
+    "---\ntitulo: Rara\nartista: X\nfecha: 2026-03-01\nNivel2: alto\nenergia: -3\n---\n\nTexto libre.\n",
+  );
+  const s = await crearServicio({ carpeta, embed });
+  const f = s.fichas[0];
+  assert.equal(f.dims.Nivel2, "alto");
+  assert.equal(f.dims.energia, -3);
+  rmSync(carpeta, { recursive: true, force: true });
 });

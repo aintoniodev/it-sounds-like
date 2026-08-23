@@ -46,20 +46,28 @@ const conPortada = servicio.fichas.filter((f) => f.cover).length;
 console.log(`portadas: ${conPortada}/${servicio.fichas.length} resueltas (${deRed} consultadas en red, el resto del caché)`);
 
 // vigilancia del catálogo: alta, cambio o borrado de una ficha se refleja
-// en la búsqueda sin reiniciar; una ficha rota se rechaza y el índice queda intacto
+// en la búsqueda sin reiniciar; una ficha rota se rechaza y el índice queda
+// intacto. El debounce acumula en un lote: dos fichas cambiadas a la vez
+// no se pierden.
 let reloj;
+const pendientes = new Set();
 watch(CATALOGO, (_evento, nombre) => {
   if (!nombre?.endsWith(".md")) return;
+  pendientes.add(nombre);
   clearTimeout(reloj);
   reloj = setTimeout(async () => {
-    try {
-      const r = await servicio.actualizar(join(CATALOGO, nombre));
-      if (r.accion === "ignorada") return;
-      const ficha = servicio.fichas.find((f) => f.slug === r.slug);
-      if (ficha) ficha.cover = (await portadas.resolver(ficha)).cover;
-      console.log(`watcher: ${r.accion} — ${r.slug}`);
-    } catch (e) {
-      console.error(`watcher: ${e.message}`);
+    const lote = [...pendientes];
+    pendientes.clear();
+    for (const nombre of lote) {
+      try {
+        const r = await servicio.actualizar(join(CATALOGO, nombre));
+        if (r.accion === "ignorada") continue;
+        const ficha = servicio.fichas.find((f) => f.slug === r.slug);
+        if (ficha) ficha.cover = (await portadas.resolver(ficha)).cover;
+        console.log(`watcher: ${r.accion} — ${r.slug}`);
+      } catch (e) {
+        console.error(`watcher: ${e.message}`);
+      }
     }
   }, 200);
 });

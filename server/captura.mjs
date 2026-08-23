@@ -3,6 +3,7 @@
 // El watcher la indexa al instante.
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { nucleoCompleto } from "./servicio.mjs";
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -21,8 +22,7 @@ export function slugDe(ficha) {
 const quoted = (v) => `"${String(v).replace(/"/g, "")}"`;
 
 export async function crearFicha({ carpeta, ficha }) {
-  const faltan = ["titulo", "artista", "fecha"].filter((k) => !String(ficha[k] ?? "").trim());
-  if (faltan.length) throw new Error(`falta el núcleo: ${faltan.join(", ")}`);
+  if (!nucleoCompleto(ficha)) throw new Error("falta el núcleo: titulo, artista y fecha");
   if (!FECHA.test(ficha.fecha)) throw new Error("la fecha debe ir como AAAA-MM-DD");
 
   const slug = slugDe(ficha);

@@ -12,7 +12,7 @@ const FUERA = { signal: AbortSignal.timeout(8000) };
 
 export function crearPortadas({ dir, fetcher = fetch }) {
   mkdirSync(dir, { recursive: true });
-  const indice = join(dir, "indice.json");
+  const indice = join(dir, "portadas.json");
   const cache = existsSync(indice) ? JSON.parse(readFileSync(indice, "utf8")) : {};
 
   const claveDe = (ficha) => {

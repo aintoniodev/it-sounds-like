@@ -16,7 +16,7 @@ type DimInfo = {
   numericas: { key: string; min: number; max: number }[];
   categoricas: { key: string; valores: string[] }[];
 };
-type Filtros = { max: Record<string, number>; en: Record<string, string[]> };
+type Filtros = { min: Record<string, number>; max: Record<string, number>; en: Record<string, string[]> };
 
 const css = `
 @font-face {
@@ -75,8 +75,7 @@ a { color: inherit; }
 .filtros h4 { margin: 12px 0 6px; font-weight: 400; opacity: .7; text-transform: none; letter-spacing: .08em; }
 .filtros h4:first-child { margin-top: 0; }
 .filtros .rango { display: grid; gap: 2px; margin-bottom: 6px; }
-.filtros .rango label { opacity: .8; }
-.filtros input[type="range"] { width: 100%; accent-color: #e8b17d; }
+.filtros .rango label { opacity: .8; }.filtros input[type="range"] { width: 100%; accent-color: #e8b17d; }
 .filtros .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .filtros .chips button {
   background: transparent; border: 1px solid rgba(239,233,223,.25); border-radius: 999px;
@@ -248,11 +247,10 @@ fichas.forEach((f, i) => {
 estado.textContent = `${fichas.length} fichas en sala`;
 
 // ---- filtros auto-descubiertos + top ajustable ----
-const filtros: Filtros = { max: {}, en: {} };
+const filtros: Filtros = { min: {}, max: {}, en: {} };
 let top = 3;
 filtrosBtn.onclick = () => filtrosPanel.classList.toggle("abierto");
 
-const bloques: HTMLElement[] = [];
 const tituloBloque = (t: string) => {
   const h = document.createElement("h4");
   h.textContent = t;
@@ -260,28 +258,35 @@ const tituloBloque = (t: string) => {
   return h;
 };
 for (const d of dims.numericas) {
-  tituloBloque(`${d.key.replace(/_/g, " ")} (máx ${d.max})`);
+  tituloBloque(`${d.key.replace(/_/g, " ")} (${d.min}–${d.max})`);
   const rango = document.createElement("div");
   rango.className = "rango";
-  const slider = document.createElement("input");
-  slider.type = "range";
-  slider.min = String(d.min);
-  slider.max = String(d.max);
-  slider.step = "1";
-  slider.value = String(d.max);
-  slider.setAttribute("aria-label", `${d.key} máximo`);
-  const etiqueta = document.createElement("label");
-  etiqueta.textContent = `≤ ${d.max}`;
-  slider.oninput = () => {
-    const v = Number(slider.value);
-    etiqueta.textContent = `≤ ${v}`;
-    if (v >= d.max) delete filtros.max[d.key];
-    else filtros.max[d.key] = v;
-    buscar();
+  const haceSlider = (esMin: boolean) => {
+    const etiqueta = document.createElement("label");
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = String(d.min);
+    slider.max = String(d.max);
+    slider.step = "1";
+    slider.value = String(esMin ? d.min : d.max);
+    slider.setAttribute("aria-label", `${d.key} ${esMin ? "mínimo" : "máximo"}`);
+    const pondera = () => {
+      const v = Number(slider.value);
+      const libre = esMin ? v <= d.min : v >= d.max;
+      const lado = esMin ? filtros.min : filtros.max;
+      if (libre) delete lado[d.key];
+      else lado[d.key] = v;
+      etiqueta.textContent = `${esMin ? "desde" : "hasta"} ${v}`;
+      buscar();
+    };
+    slider.oninput = pondera;
+    etiqueta.textContent = `${esMin ? "desde" : "hasta"} ${esMin ? d.min : d.max}`;
+    const celda = document.createElement("div");
+    celda.append(etiqueta, slider);
+    return celda;
   };
-  rango.append(etiqueta, slider);
+  rango.append(haceSlider(true), haceSlider(false));
   filtrosPanel.appendChild(rango);
-  bloques.push(rango);
 }
 for (const d of dims.categoricas) {
   tituloBloque(d.key.replace(/_/g, " "));
@@ -301,7 +306,6 @@ for (const d of dims.categoricas) {
     chips.appendChild(b);
   }
   filtrosPanel.appendChild(chips);
-  bloques.push(chips);
 }
 tituloBloque("resultados");
 const filaTop = document.createElement("div");

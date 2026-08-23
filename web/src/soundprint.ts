@@ -163,20 +163,25 @@ export function abrirSoundprint() {
 
     // una mancha por canción única; el grosor crece con la repetición;
     // birth = cuándo se matcheó por última vez (las recientes pulsan)
-    const pesos = new Map<string, { n: number; ultima: number; energia: number }>();
+    const pesos = new Map<string, { n: number; ultima: number; energia: number | null }>();
     let t = 0;
     for (const h of historial) {
       for (const m of h.matches) {
-        const prev = pesos.get(m.slug) ?? {
-          n: 0,
-          ultima: 0,
-          energia:
-            typeof m.dims["energia"] === "number" ? (m.dims["energia"] as number) / 10 : hash01(m.slug, 7),
-        };
+        const prev = pesos.get(m.slug) ?? { n: 0, ultima: 0, energia: null };
+        if (typeof m.dims["energia"] === "number") prev.energia = m.dims["energia"] as number;
         pesos.set(m.slug, { ...prev, n: prev.n + 1, ultima: t });
       }
       t++;
     }
+    // el color por energia se normaliza al rango observado: las claves son
+    // inventables y su escala no se puede asumir (no siempre 0–10)
+    const conEnergia = [...pesos.values()].filter((p) => p.energia !== null).map((p) => p.energia!);
+    const eMin = conEnergia.length ? Math.min(...conEnergia) : 0;
+    const eMax = conEnergia.length ? Math.max(...conEnergia) : 1;
+    const colorDe = (slug: string, energia: number | null) => {
+      if (energia === null) return hash01(slug, 7);
+      return eMax > eMin ? (energia - eMin) / (eMax - eMin) : 0.5;
+    };
     const entradas = [...pesos.entries()].slice(-MAX_MANCHAS);
     uniforms.uCount.value = entradas.length;
     entradas.forEach(([slug, info], i) => {
@@ -185,7 +190,7 @@ export function abrirSoundprint() {
         (hash01(slug, 1) * 2 - 1) * 0.62,
         (hash01(slug, 2) * 2 - 1) * 0.52,
         hash01(slug, 3) * escala,
-        info.energia,
+        colorDe(slug, info.energia),
       );
       // la mancha nace cuando su canción volvió a matchear: las del último
       // top pulsan, las antiguas llevan siglos (3s por búsqueda de edad)

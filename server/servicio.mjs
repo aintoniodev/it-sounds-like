@@ -26,15 +26,20 @@ async function embedReal() {
   return async (texts) => (await pipe(texts, { pooling: "mean", normalize: true })).tolist();
 }
 
-export function parseFicha(slug, raw) {
+// el núcleo obligatorio de una ficha; lo validan el índice y la captura
+export function nucleoCompleto(ficha) {
+  return Boolean(ficha.titulo && ficha.artista && ficha.fecha);
+}
+
+function parseFicha(slug, raw) {
   const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   const meta = {};
   if (m) {
     for (const line of m[1].split("\n")) {
-      const kv = line.match(/^([a-z_ñ]+):\s*(.*)$/);
+      const kv = line.match(/^([A-Za-z_ñÑ][A-Za-z_ñÑ0-9]*):\s*(.*)$/);
       if (kv && kv[2] !== '""') {
         const v = kv[2].replace(/^"|"$/g, "").replace(/\s*#.*$/, "").trim();
-        if (v !== "") meta[kv[1]] = /^\d+(?:[.,]\d+)?$/.test(v) ? Number(v.replace(",", ".")) : v;
+        if (v !== "") meta[kv[1]] = /^-?\d+(?:[.,]\d+)?$/.test(v) ? Number(v.replace(",", ".")) : v;
       }
     }
   }
@@ -53,7 +58,7 @@ function parseCatalogo(carpeta) {
   const fichas = readdirSync(carpeta)
     .filter((f) => f.endsWith(".md") && !f.startsWith("_"))
     .map((f) => parseFicha(basename(f, ".md"), readFileSync(join(carpeta, f), "utf8")));
-  const rotas = fichas.filter((f) => !f.titulo || !f.artista || !f.fecha);
+  const rotas = fichas.filter((f) => !nucleoCompleto(f));
   if (rotas.length) {
     throw new Error(
       `fichas con el núcleo incompleto (titulo/artista/fecha): ${rotas.map((f) => f.slug).join(", ")}`,
@@ -64,10 +69,20 @@ function parseCatalogo(carpeta) {
 
 const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
 
-function pasa(ficha, filtros) {
-  for (const [k, v] of Object.entries(ficha.dims)) {
-    if (typeof v === "number" && filtros.max?.[k] !== undefined && v > filtros.max[k]) return false;
-    if (typeof v === "string" && filtros.en?.[k]?.length && !filtros.en[k].includes(v)) return false;
+// un filtro exige la dimensión: filtrar por energia o momento_del_dia deja
+// fuera a las fichas que no declaran esa clave
+export function pasaFiltros(ficha, filtros) {
+  for (const [k, tope] of Object.entries(filtros.max ?? {})) {
+    const v = ficha.dims[k];
+    if (typeof v !== "number" || v > tope) return false;
+  }
+  for (const [k, suelo] of Object.entries(filtros.min ?? {})) {
+    const v = ficha.dims[k];
+    if (typeof v !== "number" || v < suelo) return false;
+  }
+  for (const [k, permitidos] of Object.entries(filtros.en ?? {})) {
+    const v = ficha.dims[k];
+    if (typeof v !== "string" || !permitidos.includes(v)) return false;
   }
   return true;
 }
@@ -118,7 +133,7 @@ export async function crearServicio({ carpeta, embed }) {
         return { accion: "borrada", slug };
       }
       const nueva = parseFicha(slug, readFileSync(ruta, "utf8"));
-      if (!nueva.titulo || !nueva.artista || !nueva.fecha) {
+      if (!nucleoCompleto(nueva)) {
         throw new Error(`ficha con el núcleo incompleto (titulo/artista/fecha): ${slug}`);
       }
       if (i !== -1 && fichas[i].body === nueva.body) {
@@ -134,7 +149,7 @@ export async function crearServicio({ carpeta, embed }) {
     async buscar(consulta, { filtros = {}, top = 3 } = {}) {
       const qvec = (await embedBatch([`query: ${consulta}`]))[0];
       return fichas
-        .filter((f) => pasa(f, filtros))
+        .filter((f) => pasaFiltros(f, filtros))
         .map((f) => ({ ficha: f, score: dot(f.vector, qvec) }))
         .sort((a, b) => b.score - a.score)
         .slice(0, top);
