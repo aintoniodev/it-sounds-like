@@ -23,3 +23,7 @@ _Avoid_: schema, formulario
 **Núcleo**:
 Lo mínimo obligatorio de una ficha: título, artista y fecha. Todo lo demás es opcional e inventable.
 _Avoid_: campos requeridos, schema fijo
+
+**Soundprint**:
+La firma sonora de quien busca, pintada con las palabras del autor sobre las fichas que le han matcheado. La del autor es la misma pieza aplicada a su catálogo entero.
+_Avoid_: musicprint, huella musical, perfil

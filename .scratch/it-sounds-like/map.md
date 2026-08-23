@@ -26,11 +26,11 @@ Un producto completo corriendo en local: fichas de canciones escritas por un ing
 - [Inventario de embeddings](issues/02-inventario-de-embeddings.md): default local `multilingual-e5-small` (MIT, 470 MB) vía transformers.js con cosine en memoria; plan B `bge-m3` en Ollama (respaldo API gratis: Cloudflare 10k neurons/día); jina-v3 mejor en ES pero licencia NC; sin vector store para cientos de fichas. Informe: `research/embeddings` → `docs/research/embeddings.md`.
 - [Resolver referencia de canción](issues/03-resolver-referencia-de-cancion.md): sin OAuth — oEmbed de Spotify (`open.spotify.com/oembed`, sin key, da título+portada pero NO artista) para fichas con link; fallback texto libre con iTunes Search (1 request lo da todo) o MusicBrainz+CAA; resolver en indexado y cachear en la ficha. Informe: `research/referencia-cancion` → `docs/research/referencia-cancion.md`.
 - [Seed del catálogo](issues/05-seed-del-catalogo.md): 23 fichas desechables en `catalogo/` cubriendo ánimos, géneros (pop a clásica), épocas (1801–2020) y claves custom como dimensiones (`energia` en dos extremos).
+- [Definir soundprint](issues/04-definir-soundprint.md): firma del que busca hecha con las palabras del autor (significado) sobre dimensiones (estructura) y lienzo generativo; input pasivo de los matches, por navegador sin cuentas; panel + export PNG (enlace con el canal IG del autor); el nombre es "soundprint".
 
 ## Not yet specified
 
 - **Calidad de búsqueda**: umbral mínimo / qué pasa cuando no hay buen match, tuning del modelo — niebla hasta que existan seed del catálogo y modelo elegido.
-- **Visualización del soundprint**: cómo se genera y se pinta (probablemente ThreeUI/shaders) — se afila cuando el ticket de definición del soundprint se resuelva.
 - **Formulario de captura dentro del producto**: alcance según el DoD.
 - **Reindexado**: comando manual vs watcher — según el DoD.
 - **Enriquecimiento de fichas** (género, año, audio-features externas) — solo si la calidad de matching lo pide.
