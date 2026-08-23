@@ -1,7 +1,7 @@
 # Formato de ficha
 
 Type: prototype
-Status: open
+Status: claimed
 Labels: wayfinder:prototype
 
 ## Question
