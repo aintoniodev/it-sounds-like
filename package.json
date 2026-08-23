@@ -1,0 +1,13 @@
+{
+  "name": "it-sounds-like",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.mjs",
+    "test": "node --test",
+    "eval": "node eval/recall.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.0"
+  }
+}
