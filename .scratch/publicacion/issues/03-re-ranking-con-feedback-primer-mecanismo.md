@@ -1,7 +1,7 @@
 # Re-ranking con feedback: primer mecanismo
 
 Type: grilling
-Status: open
+Status: claimed
 Labels: wayfinder:grilling
 Blocked by: 02
 
