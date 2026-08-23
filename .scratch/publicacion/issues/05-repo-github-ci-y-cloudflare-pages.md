@@ -1,7 +1,7 @@
 # Repo GitHub + CI + Cloudflare Pages
 
 Type: task
-Status: open
+Status: claimed
 Labels: wayfinder:task
 Blocked by: 04
 
