@@ -8,6 +8,7 @@ import { join, basename, extname, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crearServicio, UMBRAL } from "./servicio.mjs";
 import { crearPortadas } from "./portadas.mjs";
+import { crearFicha } from "./captura.mjs";
 
 const CATALOGO = fileURLToPath(new URL("../catalogo", import.meta.url));
 const DIST = fileURLToPath(new URL("../web/dist", import.meta.url));
@@ -136,6 +137,32 @@ const server = createServer(async (req, res) => {
       const ficha = servicio.fichas[Math.floor(Math.random() * servicio.fichas.length)];
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       return res.end(JSON.stringify({ ficha: publica(ficha) }));
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/plantilla") {
+      let cuerpo = "## Por qué esta canción\n\n## Para cuándo\n\n## Escucha\n";
+      try {
+        const raw = await readFile(join(CATALOGO, "_plantilla.md"), "utf8");
+        const m = raw.match(/^---\n[\s\S]*?\n---\n?([\s\S]*)$/);
+        if (m?.[1].trim()) cuerpo = m[1].trim();
+      } catch {
+        // sin plantilla: las secciones sugeridas por defecto
+      }
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      return res.end(JSON.stringify({ cuerpo }));
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/fichas") {
+      const ficha = JSON.parse(await leerCuerpo(req));
+      try {
+        const { slug } = await crearFicha({ carpeta: CATALOGO, ficha });
+        res.writeHead(201, { "content-type": "application/json; charset=utf-8" });
+        return res.end(JSON.stringify({ slug }));
+      } catch (e) {
+        const conflicto = /ya existe/.test(e.message);
+        res.writeHead(conflicto ? 409 : 400, { "content-type": "text/plain; charset=utf-8" });
+        return res.end(e.message);
+      }
     }
 
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });

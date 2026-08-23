@@ -100,6 +100,44 @@ a { color: inherit; }
   border-radius: 6px; color: inherit; padding: 6px 12px; font-size: 12px;
 }
 .panel .copiar-caption:hover { background: rgba(239,233,223,.12); }
+
+.captura-btn {
+  position: absolute; top: 12px; right: 150px; z-index: 3;
+  background: rgba(13,11,9,.65); border: 1px solid rgba(239,233,223,.25); border-radius: 6px;
+  color: inherit; padding: 8px 12px; font-size: 13px;
+}
+.captura {
+  position: fixed; inset: 0; z-index: 6; display: none;
+  background: rgba(13,11,9,.92); backdrop-filter: blur(10px);
+  overflow: auto; padding: 6vh 5vw;
+}
+.captura.abierto { display: block; }
+.captura form {
+  width: min(620px, 100%); margin: 0 auto; display: grid; gap: 14px; font-size: 14px;
+}
+.captura h2 { margin: 0; font-weight: 400; letter-spacing: .25em; text-transform: uppercase; font-size: 13px; opacity: .7; }
+.captura .fila { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.captura label { display: grid; gap: 4px; opacity: .85; font-size: 12px; }
+.captura input, .captura textarea {
+  font: inherit; background: rgba(239,233,223,.06); border: 1px solid rgba(239,233,223,.25);
+  border-radius: 6px; color: inherit; padding: 8px 10px;
+}
+.captura input:focus, .captura textarea:focus { outline: none; border-color: #e8b17d; }
+.captura textarea { resize: vertical; min-height: 260px; line-height: 1.6; }
+.captura .claves { display: grid; gap: 6px; }
+.captura .claves .clave { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
+.captura .claves .clave button, .captura .anadir-clave, .captura .guardar, .captura .cerrar {
+  background: transparent; border: 1px solid rgba(239,233,223,.3); border-radius: 6px;
+  color: inherit; padding: 6px 12px; font-size: 12px;
+}
+.captura .anadir-clave { justify-self: start; }
+.captura .anadir-clave:hover, .captura .claves .clave button:hover, .captura .cerrar:hover { background: rgba(239,233,223,.1); }
+.captura .guardar { border-color: #e8b17d; color: #e8b17d; padding: 10px 18px; font-size: 14px; }
+.captura .guardar:hover { background: rgba(232,177,125,.15); }
+.captura .acciones { display: flex; gap: 10px; align-items: center; }
+.captura .mensaje { font-size: 13px; }
+.captura .mensaje.error { color: #e07a6a; }
+.captura .mensaje.ok { color: #9ab8a0; }
 `;
 
 function texturaFallback(titulo: string, artista: string): THREE.Texture {
@@ -155,7 +193,9 @@ escena.innerHTML = `
   <button class="filtros-btn" type="button">filtros</button>
   <div class="filtros"></div>
   <div class="lista"></div>
-  <div class="panel"></div>`;
+  <div class="panel"></div>
+  <button class="captura-btn" type="button">escribir ficha</button>
+  <div class="captura"></div>`;
 app.appendChild(escena);
 
 const input = escena.querySelector<HTMLInputElement>("input")!;
@@ -375,6 +415,83 @@ escena.querySelector<HTMLButtonElement>(".sorprendeme")!.onclick = async () => {
   viajarA(ficha.slug);
   abrirPanel(ficha);
   estado.textContent = `sorpréndeme: ${ficha.titulo} — ${ficha.artista}`;
+};
+
+// ---- captura del autor: el formulario escribe ficheros al catálogo ----
+const capturaBtn = escena.querySelector<HTMLButtonElement>(".captura-btn")!;
+const captura = escena.querySelector<HTMLElement>(".captura")!;
+
+capturaBtn.onclick = async () => {
+  const { cuerpo: plantilla } = await pedirJSON<{ cuerpo: string }>("/api/plantilla");
+  captura.innerHTML = "";
+  const form = document.createElement("form");
+  form.innerHTML = `
+    <h2>nueva ficha</h2>
+    <div class="fila">
+      <label>título <input name="titulo" required /></label>
+      <label>artista <input name="artista" required /></label>
+    </div>
+    <div class="fila">
+      <label>fecha <input name="fecha" value="${new Date().toISOString().slice(0, 10)}" required /></label>
+      <label>link de spotify (opcional) <input name="spotify" placeholder="https://open.spotify.com/track/…" /></label>
+    </div>
+    <div class="claves"></div>
+    <button type="button" class="anadir-clave">añadir clave libre</button>
+    <label>cuerpo <textarea name="cuerpo"></textarea></label>
+    <div class="acciones">
+      <button type="submit" class="guardar">guardar</button>
+      <button type="button" class="cerrar">cerrar</button>
+      <span class="mensaje"></span>
+    </div>`;
+  captura.appendChild(form);
+  const claves = form.querySelector<HTMLElement>(".claves")!;
+  const mensaje = form.querySelector<HTMLElement>(".mensaje")!;
+
+  const filaClave = () => {
+    const fila = document.createElement("div");
+    fila.className = "clave";
+    fila.innerHTML = `<input placeholder="energia" /><input placeholder="7" /><button type="button">quitar</button>`;
+    fila.querySelector("button")!.onclick = () => fila.remove();
+    claves.appendChild(fila);
+  };
+  form.querySelector<HTMLButtonElement>(".anadir-clave")!.onclick = filaClave;
+  form.querySelector<HTMLTextAreaElement>("textarea")!.value = plantilla;
+  form.querySelector<HTMLButtonElement>(".cerrar")!.onclick = () => captura.classList.remove("abierto");
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    mensaje.className = "mensaje";
+    mensaje.textContent = "guardando…";
+    const datos = new FormData(form);
+    const r = await fetch("/api/fichas", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        titulo: datos.get("titulo"),
+        artista: datos.get("artista"),
+        fecha: datos.get("fecha"),
+        spotify: datos.get("spotify"),
+        cuerpo: form.querySelector("textarea")!.value,
+        claves: [...claves.querySelectorAll<HTMLDivElement>(".clave")].map((f) => {
+          const [clave, valor] = [...f.querySelectorAll("input")];
+          return { clave: clave.value, valor: valor.value };
+        }),
+      }),
+    });
+    if (r.ok) {
+      const { slug } = await r.json();
+      mensaje.className = "mensaje ok";
+      mensaje.textContent = `guardada: ${slug} — ya se puede buscar`;
+      form.reset();
+      form.querySelector("textarea")!.value = plantilla;
+      form.querySelector<HTMLInputElement>("[name=fecha]")!.value = new Date().toISOString().slice(0, 10);
+    } else {
+      mensaje.className = "mensaje error";
+      mensaje.textContent = await r.text();
+    }
+  };
+  captura.classList.add("abierto");
+  form.querySelector<HTMLInputElement>("[name=titulo]")!.focus();
 };
 
 // ---- cámara: deriva suave hacia el objetivo + parallax con el ratón ----
