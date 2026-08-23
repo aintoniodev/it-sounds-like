@@ -1,7 +1,7 @@
 # Definir soundprint
 
 Type: grilling
-Status: open
+Status: claimed
 Labels: wayfinder:grilling
 
 ## Question
