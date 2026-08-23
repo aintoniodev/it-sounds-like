@@ -1,7 +1,7 @@
 # Resolver referencia de canción sin fricción
 
 Type: research
-Status: open
+Status: claimed
 Labels: wayfinder:research
 
 ## Question
