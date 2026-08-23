@@ -337,6 +337,17 @@ function abrirPanel(f: Ficha) {
     <div class="meta">${f.fecha}${f.score !== undefined ? ` · match ${f.score.toFixed(3)}` : ""}</div>
     <div class="cuerpo">${f.body.replace(/^## .+$/gm, "").trim()}</div>
     ${f.spotify ? `<p><a href="${f.spotify}" target="_blank">escuchar en Spotify</a></p>` : ""}`;
+  const copiar = document.createElement("button");
+  copiar.type = "button";
+  copiar.className = "copiar-caption";
+  copiar.textContent = "copiar caption";
+  copiar.onclick = async () => {
+    const { caption } = await pedirJSON<{ caption: string }>(`/api/caption/${f.slug}`);
+    await navigator.clipboard.writeText(caption);
+    copiar.textContent = "copiado";
+    setTimeout(() => (copiar.textContent = "copiar caption"), 1500);
+  };
+  panel.appendChild(copiar);
 }
 
 function viajarA(slug: string) {
@@ -479,9 +490,19 @@ capturaBtn.onclick = async () => {
       }),
     });
     if (r.ok) {
-      const { slug } = await r.json();
+      const { slug, caption } = await r.json();
       mensaje.className = "mensaje ok";
       mensaje.textContent = `guardada: ${slug} — ya se puede buscar`;
+      const copiarCaption = document.createElement("button");
+      copiarCaption.type = "button";
+      copiarCaption.className = "guardar";
+      copiarCaption.textContent = "copiar caption";
+      copiarCaption.onclick = async () => {
+        await navigator.clipboard.writeText(caption);
+        copiarCaption.textContent = "copiado";
+        setTimeout(() => (copiarCaption.textContent = "copiar caption"), 1500);
+      };
+      form.querySelector(".acciones")!.appendChild(copiarCaption);
       form.reset();
       form.querySelector("textarea")!.value = plantilla;
       form.querySelector<HTMLInputElement>("[name=fecha]")!.value = new Date().toISOString().slice(0, 10);

@@ -26,7 +26,7 @@ async function embedReal() {
   return async (texts) => (await pipe(texts, { pooling: "mean", normalize: true })).tolist();
 }
 
-function parseFicha(slug, raw) {
+export function parseFicha(slug, raw) {
   const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   const meta = {};
   if (m) {

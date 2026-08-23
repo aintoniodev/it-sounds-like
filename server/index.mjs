@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { crearServicio, UMBRAL } from "./servicio.mjs";
 import { crearPortadas } from "./portadas.mjs";
 import { crearFicha } from "./captura.mjs";
+import { renderCaption } from "./caption.mjs";
 
 const CATALOGO = fileURLToPath(new URL("../catalogo", import.meta.url));
 const DIST = fileURLToPath(new URL("../web/dist", import.meta.url));
@@ -157,12 +158,23 @@ const server = createServer(async (req, res) => {
       try {
         const { slug } = await crearFicha({ carpeta: CATALOGO, ficha });
         res.writeHead(201, { "content-type": "application/json; charset=utf-8" });
-        return res.end(JSON.stringify({ slug }));
+        return res.end(JSON.stringify({ slug, caption: renderCaption(ficha) }));
       } catch (e) {
         const conflicto = /ya existe/.test(e.message);
         res.writeHead(conflicto ? 409 : 400, { "content-type": "text/plain; charset=utf-8" });
         return res.end(e.message);
       }
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/api/caption/")) {
+      const slug = decodeURIComponent(url.pathname.replace("/api/caption/", ""));
+      const ficha = servicio.fichas.find((f) => f.slug === slug);
+      if (!ficha) {
+        res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+        return res.end(`no encuentro la ficha: ${slug}`);
+      }
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      return res.end(JSON.stringify({ caption: renderCaption(publica(ficha)) }));
     }
 
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
