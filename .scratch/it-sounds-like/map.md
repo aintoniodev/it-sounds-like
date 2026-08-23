@@ -23,6 +23,7 @@ Un producto completo corriendo en local: fichas de canciones escritas por un ing
 <!-- una línea por ticket cerrado: gist + link -->
 
 - [Inventario de embeddings](issues/02-inventario-de-embeddings.md): default local `multilingual-e5-small` (MIT, 470 MB) vía transformers.js con cosine en memoria; plan B `bge-m3` en Ollama (respaldo API gratis: Cloudflare 10k neurons/día); jina-v3 mejor en ES pero licencia NC; sin vector store para cientos de fichas. Informe: `research/embeddings` → `docs/research/embeddings.md`.
+- [Resolver referencia de canción](issues/03-resolver-referencia-de-cancion.md): sin OAuth — oEmbed de Spotify (`open.spotify.com/oembed`, sin key, da título+portada pero NO artista) para fichas con link; fallback texto libre con iTunes Search (1 request lo da todo) o MusicBrainz+CAA; resolver en indexado y cachear en la ficha. Informe: `research/referencia-cancion` → `docs/research/referencia-cancion.md`.
 
 ## Not yet specified
 
