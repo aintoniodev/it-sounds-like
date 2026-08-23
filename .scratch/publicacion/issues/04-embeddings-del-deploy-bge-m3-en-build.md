@@ -1,7 +1,7 @@
 # Embeddings del deploy: bge-m3 en build
 
 Type: research
-Status: open
+Status: claimed
 Labels: wayfinder:research
 
 ## Question
