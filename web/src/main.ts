@@ -2,6 +2,7 @@
 // servicio real: portadas 3D en sala oscura, cámara al primer match, panel
 // lateral con la ficha. El rank vive en el servidor; aquí solo se pinta.
 import * as THREE from "three";
+import { registrarBusqueda, abrirSoundprint } from "./soundprint";
 
 type FichaLigera = { slug: string; titulo: string; artista: string; cover: string | null };
 type Ficha = FichaLigera & {
@@ -106,6 +107,11 @@ a { color: inherit; }
   background: rgba(13,11,9,.65); border: 1px solid rgba(239,233,223,.25); border-radius: 6px;
   color: inherit; padding: 8px 12px; font-size: 13px;
 }
+.sp-btn {
+  position: absolute; top: 12px; right: 262px; z-index: 3;
+  background: rgba(13,11,9,.65); border: 1px solid rgba(239,233,223,.25); border-radius: 6px;
+  color: inherit; padding: 8px 12px; font-size: 13px;
+}
 .captura {
   position: fixed; inset: 0; z-index: 6; display: none;
   background: rgba(13,11,9,.92); backdrop-filter: blur(10px);
@@ -194,6 +200,7 @@ escena.innerHTML = `
   <div class="filtros"></div>
   <div class="lista"></div>
   <div class="panel"></div>
+  <button class="sp-btn" type="button">soundprint</button>
   <button class="captura-btn" type="button">escribir ficha</button>
   <div class="captura"></div>`;
 app.appendChild(escena);
@@ -316,6 +323,20 @@ filaTop.append(menos, etiquetaTop, mas);
 filtrosPanel.appendChild(filaTop);
 
 // ---- búsqueda y pintado ----
+// primera frase del "Por qué" de una ficha: la palabra del autor que pinta
+// el soundprint
+function fraseDe(f: Ficha): string {
+  const secs: Record<string, string> = {};
+  let intro = "";
+  for (const block of f.body.split(/(?=^##\s)/m)) {
+    const h = block.match(/^##\s+(.+)$/m);
+    if (h) secs[h[1].trim().toLowerCase()] = block.replace(/^##\s+.*$/m, "").trim();
+    else if (block.trim() && !intro) intro = block.trim();
+  }
+  const porque = secs["por qué esta canción"] || intro || f.body;
+  return porque.match(/^[^.!?]+[.!?]/)?.[0] ?? porque;
+}
+
 function resetPaneles() {
   paneles.forEach(({ mesh }) => {
     (mesh.material as THREE.MeshBasicMaterial).opacity = 0.55;
@@ -398,6 +419,10 @@ async function buscar() {
   }
   const topMap = new Map(resultados.map((r) => [r.slug, r.score]));
   opacidad((slug) => topMap.get(slug));
+  registrarBusqueda(
+    q,
+    resultados.map((r) => ({ slug: r.slug, frase: fraseDe(r), dims: r.dims })),
+  );
   lista.replaceChildren(
     ...resultados.map((r, i) => {
       const b = document.createElement("button");
@@ -425,8 +450,11 @@ escena.querySelector<HTMLButtonElement>(".sorprendeme")!.onclick = async () => {
   opacidad((slug) => (slug === ficha.slug ? 1 : 0.1));
   viajarA(ficha.slug);
   abrirPanel(ficha);
+  registrarBusqueda("sorpréndeme", [{ slug: ficha.slug, frase: fraseDe(ficha), dims: ficha.dims }]);
   estado.textContent = `sorpréndeme: ${ficha.titulo} — ${ficha.artista}`;
 };
+
+escena.querySelector<HTMLButtonElement>(".sp-btn")!.onclick = abrirSoundprint;
 
 // ---- captura del autor: el formulario escribe ficheros al catálogo ----
 const capturaBtn = escena.querySelector<HTMLButtonElement>(".captura-btn")!;
