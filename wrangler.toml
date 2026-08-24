@@ -7,3 +7,10 @@ compatibility_date = "2026-08-24"
 
 [ai]
 binding = "AI"
+
+# feedback público: la tupla del ticket 03 (base D1 it-sounds-like-feedback).
+# (requiere D1 Edit en el token; ver scripts/wizard-d1.md)
+[[d1_databases]]
+binding = "DB"
+database_name = "it-sounds-like-feedback"
+database_id = "9ed264fa-d191-4ac5-862e-b892908cba3f"

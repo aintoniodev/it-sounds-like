@@ -1,8 +1,10 @@
 # Worker aparte para el cron de purge: Pages Functions no soportan
 # scheduled triggers. Mismo D1 que el sitio (binding DB), schedule diaria.
+# Sin HTTP: solo vive para el cron (por eso workers_dev off).
 name = "it-sounds-like-purge"
 main = "index.mjs"
 compatibility_date = "2026-08-24"
+workers_dev = false
 
 [triggers]
 crons = ["0 4 * * *"]
@@ -10,4 +12,4 @@ crons = ["0 4 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "it-sounds-like-feedback"
-database_id = "local-dev"
+database_id = "9ed264fa-d191-4ac5-862e-b892908cba3f"
