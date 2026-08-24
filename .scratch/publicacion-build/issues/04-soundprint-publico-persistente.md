@@ -4,8 +4,12 @@
 
 **Blocked by:** 01 (Tracer: primera búsqueda en la web pública).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Marcar un clavo actualiza el soundprint del visitante en el sitio
-- [ ] El soundprint sobrevive recargar y volver días después (localStorage del hash)
-- [ ] El PNG exportado lleva la firma del canal, sin duplicar la constante
+- [x] Marcar un clavo actualiza el soundprint del visitante en el sitio
+- [x] El soundprint sobrevive recargar y volver días después (localStorage del hash)
+- [x] El PNG exportado lleva la firma del canal, sin duplicar la constante
+
+## Comments
+
+**2026-08-24 (agente):** en el sitio público solo el clavo pinta el soundprint (el match confirmado, no cualquier búsqueda) — la letra pedía exactamente eso; v1 sigue registrando cada búsqueda. La firma vive en `web/src/canal.ts` (única fuente, una sola aparición en el bundle verificado) y se muestra en pantalla y en el PNG. El review pilló que re-clavar una ficha inflaba el contador y el peso por repetición: registrarBusqueda ahora acumula por query y el guard de aria-pressed evita también el evento duplicado a D1. No-Goal documentado: marcar "no me encaja" tras un clavo no retrae la mancha (la señal negativa alimenta el re-ranking del 05, no el soundprint).

@@ -7,6 +7,7 @@
 // solo la tupla, sin IP ni cookies (el pie lo cuenta en cinco líneas).
 import * as THREE from "three";
 import { registrarBusqueda, abrirSoundprint, matchDe } from "./soundprint";
+import { calcularDimensiones } from "../../functions/rank.mjs";
 
 type FichaLigera = { slug: string; titulo: string; artista: string; cover: string | null };
 type Ficha = FichaLigera & {
@@ -16,10 +17,7 @@ type Ficha = FichaLigera & {
   dims: Record<string, string | number>;
   score?: number;
 };
-type DimInfo = {
-  numericas: { key: string; min: number; max: number }[];
-  categoricas: { key: string; valores: string[] }[];
-};
+type DimInfo = ReturnType<typeof calcularDimensiones>;
 type Filtros = { min: Record<string, number>; max: Record<string, number>; en: Record<string, string[]> };
 
 const css = `
@@ -148,30 +146,6 @@ async function pedirJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
   if (!r.ok) throw new Error(`${url}: ${r.status}`);
   return r.json();
-}
-
-// dimensiones del catálogo: numéricas con su rango, categóricas con su
-// vocabulario (misma regla que la v1: más de un valor, pocas opciones)
-function calcularDimensiones(fichas: Ficha[]): DimInfo {
-  const nums = new Map<string, { min: number; max: number }>();
-  const cats = new Map<string, Set<string>>();
-  for (const f of fichas) {
-    for (const [k, v] of Object.entries(f.dims)) {
-      if (typeof v === "number") {
-        const info = nums.get(k) ?? { min: v, max: v };
-        nums.set(k, { min: Math.min(info.min, v), max: Math.max(info.max, v) });
-      } else if (typeof v === "string") {
-        if (!cats.has(k)) cats.set(k, new Set());
-        cats.get(k)!.add(v);
-      }
-    }
-  }
-  return {
-    numericas: [...nums.entries()].map(([key, { min, max }]) => ({ key, min, max })),
-    categoricas: [...cats.entries()]
-      .filter(([, vs]) => vs.size > 1 && vs.size <= 6)
-      .map(([key, vs]) => ({ key, valores: [...vs] })),
-  };
 }
 
 // visitante: hash aleatorio en localStorage, la única identidad que existe.
@@ -393,15 +367,30 @@ function cablearFeedback(fb: HTMLElement, ficha: Ficha, rankPos: number | undefi
   }
 }
 
+// el par clavo / no me encaja, ya cableado: lo pinta el panel y cada
+// resultado de la lista (una sola fuente del markup)
+function fbDe(ficha: Ficha, rankPos: number | undefined, q: string): HTMLElement {
+  const fb = document.createElement("div");
+  fb.className = "fb";
+  for (const a of ["clavo", "no-encaja"] as const) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.dataset.a = a;
+    b.textContent = a === "clavo" ? "clavo" : "no me encaja";
+    fb.appendChild(b);
+  }
+  cablearFeedback(fb, ficha, rankPos, q);
+  return fb;
+}
+
 function abrirPanel(f: Ficha, q: string, rankPos?: number) {
   panel.style.display = "block";
   panel.innerHTML = `
     <h3>${f.titulo} — ${f.artista}</h3>
     <div class="meta">${f.fecha}${f.score !== undefined ? ` · match ${f.score.toFixed(3)}` : ""}</div>
     <div class="cuerpo">${f.body.replace(/^## .+$/gm, "").trim()}</div>
-    ${f.spotify ? `<p><a href="${f.spotify}" target="_blank">escuchar en Spotify</a></p>` : ""}
-    <div class="fb"><button data-a="clavo">clavo</button><button data-a="no-encaja">no me encaja</button></div>`;
-  cablearFeedback(panel.querySelector<HTMLElement>(".fb")!, f, rankPos, q);
+    ${f.spotify ? `<p><a href="${f.spotify}" target="_blank">escuchar en Spotify</a></p>` : ""}`;
+  panel.appendChild(fbDe(f, rankPos, q));
 }
 
 let timer: ReturnType<typeof setTimeout>;
@@ -464,14 +453,15 @@ async function buscar() {
     ...resultados.map((r, i) => {
       const div = document.createElement("div");
       div.className = "resu";
-      div.innerHTML = `
-        <button type="button" class="titulo">${i + 1}. ${r.titulo} — ${r.artista}<span class="score">${r.score!.toFixed(3)}</span></button>
-        <div class="fb"><button type="button" data-a="clavo">clavo</button><button type="button" data-a="no-encaja">no me encaja</button></div>`;
-      div.querySelector<HTMLButtonElement>(".titulo")!.onclick = () => {
+      const titulo = document.createElement("button");
+      titulo.type = "button";
+      titulo.className = "titulo";
+      titulo.innerHTML = `${i + 1}. ${r.titulo} — ${r.artista}<span class="score">${r.score!.toFixed(3)}</span>`;
+      titulo.onclick = () => {
         viajarA(r.slug);
         abrirPanel(r, q, i);
       };
-      cablearFeedback(div.querySelector<HTMLElement>(".fb")!, r, i, q);
+      div.append(titulo, fbDe(r, i, q));
       return div;
     }),
   );

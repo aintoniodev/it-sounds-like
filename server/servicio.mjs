@@ -5,6 +5,11 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 import { pipeline } from "@huggingface/transformers";
+// el núcleo compartido (filtros, dimensiones, coseno) vive una sola vez en
+// functions/rank.mjs: v1, edge y cliente consumen el mismo módulo (ticket 08)
+import { coseno, pasaFiltros, calcularDimensiones } from "../functions/rank.mjs";
+
+export { pasaFiltros, calcularDimensiones };
 
 const NUCLEO = new Set(["titulo", "artista", "fecha", "spotify"]);
 const MODELO = "Xenova/multilingual-e5-small";
@@ -67,48 +72,8 @@ function parseCatalogo(carpeta) {
   return fichas;
 }
 
-const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
-
-// un filtro exige la dimensión: filtrar por energia o momento_del_dia deja
-// fuera a las fichas que no declaran esa clave
-export function pasaFiltros(ficha, filtros) {
-  for (const [k, tope] of Object.entries(filtros.max ?? {})) {
-    const v = ficha.dims[k];
-    if (typeof v !== "number" || v > tope) return false;
-  }
-  for (const [k, suelo] of Object.entries(filtros.min ?? {})) {
-    const v = ficha.dims[k];
-    if (typeof v !== "number" || v < suelo) return false;
-  }
-  for (const [k, permitidos] of Object.entries(filtros.en ?? {})) {
-    const v = ficha.dims[k];
-    if (typeof v !== "string" || !permitidos.includes(v)) return false;
-  }
-  return true;
-}
-
-// dimensiones del catálogo: numéricas con su rango, categóricas con su
-// vocabulario (solo las que sirven para filtrar: más de un valor, pocas opciones)
-export function calcularDimensiones(fichas) {
-  const nums = new Map();
-  const cats = new Map();
-  for (const f of fichas) {
-    for (const [k, v] of Object.entries(f.dims)) {
-      if (typeof v === "number") {
-        const info = nums.get(k) ?? { min: v, max: v };
-        nums.set(k, { min: Math.min(info.min, v), max: Math.max(info.max, v) });
-      } else if (typeof v === "string") {
-        (cats.get(k) ?? cats.set(k, new Set()).get(k)).add(v);
-      }
-    }
-  }
-  return {
-    numericas: [...nums.entries()].map(([key, { min, max }]) => ({ key, min, max })),
-    categoricas: [...cats.entries()]
-      .filter(([, vs]) => vs.size > 1 && vs.size <= 6)
-      .map(([key, vs]) => ({ key, valores: [...vs] })),
-  };
-}
+// los vectores e5 llegan normalizados (normalize: true), así que el coseno
+// compartido es el mismo dot de antes — pero ya no depende de ese detalle
 
 export async function crearServicio({ carpeta, embed }) {
   const embedBatch = embed ?? (await embedReal());
@@ -150,7 +115,7 @@ export async function crearServicio({ carpeta, embed }) {
       const qvec = (await embedBatch([`query: ${consulta}`]))[0];
       return fichas
         .filter((f) => pasaFiltros(f, filtros))
-        .map((f) => ({ ficha: f, score: dot(f.vector, qvec) }))
+        .map((f) => ({ ficha: f, score: coseno(f.vector, qvec) }))
         .sort((a, b) => b.score - a.score)
         .slice(0, top);
     },

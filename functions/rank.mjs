@@ -55,3 +55,27 @@ export function rankear(entries, qvec, { filtros = {}, top = 3 } = {}) {
     .sort((a, b) => b.score - a.score)
     .slice(0, top);
 }
+
+// dimensiones del catálogo: numéricas con su rango, categóricas con su
+// vocabulario (solo las que sirven para filtrar: más de un valor, pocas
+// opciones). Un único hogar para server, edge y cliente (ticket 08).
+export function calcularDimensiones(fichas) {
+  const nums = new Map();
+  const cats = new Map();
+  for (const f of fichas) {
+    for (const [k, v] of Object.entries(f.dims ?? {})) {
+      if (typeof v === "number") {
+        const info = nums.get(k) ?? { min: v, max: v };
+        nums.set(k, { min: Math.min(info.min, v), max: Math.max(info.max, v) });
+      } else if (typeof v === "string") {
+        (cats.get(k) ?? cats.set(k, new Set()).get(k)).add(v);
+      }
+    }
+  }
+  return {
+    numericas: [...nums.entries()].map(([key, { min, max }]) => ({ key, min, max })),
+    categoricas: [...cats.entries()]
+      .filter(([, vs]) => vs.size > 1 && vs.size <= 6)
+      .map(([key, vs]) => ({ key, valores: [...vs] })),
+  };
+}
