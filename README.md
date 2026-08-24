@@ -22,7 +22,7 @@ npm start
 
 - `catalogo/` — fichas markdown, una por canción. Núcleo obligatorio (`titulo`, `artista`, `fecha`), claves inventables (dimensiones), cuerpo libre. `_plantilla.md` es la plantilla editable, el índice la ignora.
 - `server/` — Node. `servicio.mjs` es el seam: catálogo → índice (multilingual-e5-small, cuerpo completo) → rank con filtros. `index.mjs` sirve la web, el API y vigila `catalogo/` (alta/edición/borrado en caliente). `portadas.mjs` resuelve portadas al indexar (oEmbed de Spotify, fallback iTunes) y las cachea: la búsqueda funciona sin red. `caption.mjs` renderiza el caption. `captura.mjs` valida y escribe fichas nuevas.
-- `web/` — buscador Escenario (portadas 3D en sala oscura, panel lateral, filtros auto-descubiertos, sorpréndeme) y soundprint (tres capas, historial por navegador, export PNG). Departure Mono bundeada.
+- `web/` — buscador Escenario (portadas 3D en sala oscura, panel lateral, filtros auto-descubiertos, sorpréndeme) y soundprint (tres capas, historial por navegador, export PNG). En pantalla estrecha la sala se vuelve de bolsillo: dos columnas, hojas inferiores para ficha y filtros, riel de resultados y swipe entre fichas del top (prototipo validado en la rama `prototype/ui-movil`). Departure Mono bundeada.
 - `eval/` — la suite de calidad. `recall.mjs` corre contra el servicio real; el recall no puede bajar del suelo en ninguna refactorización.
 - `tools/caption.mjs` — caption por CLI: `node tools/caption.mjs <slug>`.
 

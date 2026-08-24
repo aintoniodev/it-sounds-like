@@ -137,6 +137,18 @@ const server = createServer(async (req, res) => {
       return res.end(JSON.stringify({ fichas: servicio.fichas.map(({ slug, titulo, artista, cover }) => ({ slug, titulo, artista, cover })) }));
     }
 
+    // ficha completa por slug: la portada tapada en el Escenario móvil
+    if (req.method === "GET" && url.pathname.startsWith("/api/ficha/")) {
+      const slug = decodeURIComponent(url.pathname.replace("/api/ficha/", ""));
+      const ficha = servicio.fichas.find((f) => f.slug === slug);
+      if (!ficha) {
+        res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+        return res.end("no hay tal ficha");
+      }
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      return res.end(JSON.stringify({ ficha: publica(ficha) }));
+    }
+
     if (req.method === "GET" && url.pathname === "/api/dimensiones") {
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       return res.end(JSON.stringify(servicio.dimensiones()));
