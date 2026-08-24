@@ -1,9 +1,11 @@
 // POST /api/buscar — el edge de la web pública. Recibe {q, filtros, top},
 // embedea la query con bge-m3 en el mismo runtime contra el que CI embebeó
-// el índice, y devuelve el ranking con las fichas (sin vectores) y su score.
-// El índice viaja como asset estático junto al sitio; se cachea en el edge.
-import { rankear, UMBRAL } from "../rank.mjs";
+// el índice, rankea por cosine y re-rankea con el feedback de D1 (shrinkage:
+// ver functions/rank.mjs). La honesta se decide sobre el cosine puro — el
+// boost del feedback puede subir el score, pero no disfraza un mal match.
+import { rankear, rerankear, UMBRAL } from "../rank.mjs";
 import { cargarIndice } from "./indice.mjs";
+import { RETENCION_MS } from "../feedback.mjs";
 
 const MODELO = "@cf/baai/bge-m3";
 
@@ -18,14 +20,34 @@ export async function onRequestPost(context) {
   const q = typeof cuerpo?.q === "string" ? cuerpo.q.trim() : "";
   if (!q) return new Response("falta la query", { status: 400 });
 
-  const [{ data: qvecs }, indice] = await Promise.all([
+  const top = Math.min(10, Math.max(1, cuerpo.top ?? 3));
+  const [{ data: qvecs }, indice, eventos] = await Promise.all([
     env.AI.run(MODELO, { text: [q] }),
     cargarIndice(request),
+    cargarEventos(env),
   ]);
 
-  const resultados = rankear(indice, qvecs[0], {
-    filtros: cuerpo.filtros ?? {},
-    top: Math.min(10, Math.max(1, cuerpo.top ?? 3)),
-  }).map(({ ficha, score }) => ({ ...ficha, score }));
-  return Response.json({ resultados, umbral: UMBRAL });
+  const porCosine = rankear(indice, qvecs[0], { filtros: cuerpo.filtros ?? {}, top: indice.length });
+  const honesto = porCosine.length > 0 && porCosine[0].score >= UMBRAL;
+  const resultados = rerankear(porCosine, qvecs[0], eventos)
+    .slice(0, top)
+    .map(({ ficha, score }) => ({ ...ficha, score }));
+  return Response.json({ resultados, umbral: UMBRAL, honesto });
+}
+
+// eventos de feedback de los últimos 90 días con su query embebida; sin D1
+// (o con la base vacía) el re-ranking arranca en frío: cosine puro
+async function cargarEventos(env) {
+  if (!env.DB) return [];
+  try {
+    const corte = Date.now() - RETENCION_MS;
+    const { results } = await env.DB.prepare(
+      "SELECT ficha, accion, ts, qvec FROM feedback WHERE ts > ? AND qvec IS NOT NULL",
+    )
+      .bind(corte)
+      .all();
+    return results.map((r) => ({ ...r, qvec: JSON.parse(r.qvec) }));
+  } catch {
+    return [];
+  }
 }

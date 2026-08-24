@@ -3,6 +3,7 @@
 // Módulo puro (índice + vector → ranking): la suite lo prueba sin HTTP ni
 // bindings. bge-m3 devuelve vectores normalizados, pero normalizamos por si
 // acaso: cosine honesto, no dot a ciegas.
+import { RETENCION_MS } from "./feedback.mjs";
 
 // umbral de honestidad para el espacio de bge-m3: por debajo, el catálogo no
 // tiene nada fuerte para la consulta y la UI lo dice en vez de disfrazar un
@@ -78,4 +79,45 @@ export function calcularDimensiones(fichas) {
       .filter(([, vs]) => vs.size > 1 && vs.size <= 6)
       .map(([key, vs]) => ({ key, valores: [...vs] })),
   };
+}
+
+// ── re-ranking con shrinkage (ticket 05) ─────────────────────────────────
+// El sitio aprende de lo que la gente marca, sin traicionar al cosine:
+//
+//   score = cosine + α · n/(n+K) · (S̄⁺ − γ·S̄⁻)
+//
+// S̄⁺ y S̄⁻ son medias (acotadas a [0,1]) de los pesos de los eventos de
+// cada ficha; n/(n+K) es el shrinkage: con pocos eventos la señal apenas
+// mueve y con muchos satura hacia α (nunca lo supera). El peso de cada
+// evento es wᵢ = max(0, cos(query_actual, query_pasada)) · decay(90 días).
+// La negativa entra ponderada por wᵢ² y γ>1 (β = α·γ > α): penaliza fuerte,
+// pero solo dentro de su contexto de query — fuera, w²≈0 y no actúa.
+// α = 0 apaga el aprendizaje entero y el ranking queda idéntico al cosine.
+export const RERANK = Object.freeze({ alpha: 0.1, gamma: 2, K: 5 });
+
+export function rerankear(entradas, qvec, eventos, { alpha = RERANK.alpha, gamma = RERANK.gamma, K = RERANK.K, ahora = Date.now() } = {}) {
+  if (!eventos?.length || alpha === 0) return entradas;
+  const signal = new Map(); // slug → { positivos: [w], negativos: [w²] }
+  for (const e of eventos) {
+    if (!Array.isArray(e?.qvec) || !e?.ficha) continue; // legados sin vector: fuera
+    const sim = Math.max(0, coseno(qvec, e.qvec));
+    if (sim === 0) continue; // otro contexto de query: ni positivo ni negativo
+    const frescura = Math.max(0, 1 - (ahora - e.ts) / RETENCION_MS);
+    if (frescura === 0) continue; // caducado (el cron de purge lo borrará)
+    const w = sim * frescura;
+    const s = signal.get(e.ficha) ?? { positivos: [], negativos: [] };
+    s[e.accion === "no-encaja" ? "negativos" : "positivos"].push(e.accion === "no-encaja" ? w * w : w);
+    signal.set(e.ficha, s);
+  }
+  if (!signal.size) return entradas;
+  const media = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+  return entradas
+    .map((r) => {
+      const s = signal.get(r.ficha.slug);
+      if (!s) return { ...r, cosine: r.score };
+      const n = s.positivos.length + s.negativos.length;
+      const ajuste = alpha * (n / (n + K)) * (media(s.positivos) - gamma * media(s.negativos));
+      return { ...r, cosine: r.score, score: r.score + ajuste };
+    })
+    .sort((a, b) => b.score - a.score);
 }

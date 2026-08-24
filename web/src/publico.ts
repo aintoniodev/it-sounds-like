@@ -426,7 +426,7 @@ async function buscar() {
     return;
   }
   estado.textContent = "buscando…";
-  const { resultados, umbral } = await pedirJSON<{ resultados: Ficha[]; umbral: number }>("/api/buscar", {
+  const { resultados, honesto } = await pedirJSON<{ resultados: Ficha[]; honesto: boolean }>("/api/buscar", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ q, filtros, top }),
@@ -439,9 +439,9 @@ async function buscar() {
     lista.replaceChildren();
     return;
   }
-  // línea honesta: el edge dice cuánto es "fuerte" para este espacio; por
-  // debajo no se disfraza un mal match de respuesta
-  if (resultados[0].score! < umbral) {
+  // línea honesta: el edge la decide sobre el cosine puro — el boost del
+  // feedback sube el score, pero no disfraza un mal match de respuesta
+  if (!honesto) {
     opacidad(() => undefined);
     aviso.textContent = "el catálogo aún no tiene nada fuerte para eso";
     aviso.style.display = "block";
