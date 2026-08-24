@@ -48,8 +48,9 @@ writeFileSync(join(OUT_DIR, "catalogo.json"), JSON.stringify(entries.map(sinVect
 // las Pages Functions (el Worker de buscar) viven en /functions de la raíz:
 // wrangler pages deploy las recoge de ahí, junto al wrangler.toml
 
-// cliente fino: vite construye publico.html en dist-public y lo promovemos
-// a index.html (la entrada que sirve Pages)
+// cliente fino: vite construye publico.html y privacidad.html en
+// dist-public; publico se promueve a index.html (la entrada que sirve
+// Pages) y privacidad queda como página propia
 const WEB = join(import.meta.dirname, "..", "web");
 execSync("npx vite build --config vite.public.config.ts", { cwd: WEB, stdio: "inherit" });
 renameSync(join(OUT_DIR, "publico.html"), join(OUT_DIR, "index.html"));

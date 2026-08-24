@@ -111,6 +111,7 @@ a { color: inherit; }
   width: min(560px, 92vw); text-align: center;
   font-size: 11px; line-height: 1.7; opacity: .45; pointer-events: none;
 }
+.pie a { color: inherit; pointer-events: auto; text-decoration: underline; }
 @media (max-width: 900px) { .lista { bottom: 104px; } }
 `;
 
@@ -212,6 +213,7 @@ escena.innerHTML = `
     el identificador vive solo en tu navegador y puedes borrarlo cuando quieras.
     todo se purga a los 90 días.
     sin telemetría de terceros: esto es toda la analítica del sitio.
+    <a href="/privacidad.html">privacidad</a>
   </footer>`;
 app.appendChild(escena);
 
