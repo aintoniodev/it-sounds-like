@@ -18,7 +18,7 @@ export interface MatchSoundprint {
 const LS = "soundprint-historial";
 const MAX_MANCHAS = 32;
 // canal de Instagram del autor, editable en un sitio
-const ENLACE_IG = "instagram.com/itsoundslike";
+const ENLACE_IG = "instagram.com/itdoesoundlike";
 
 export function registrarBusqueda(q: string, matches: MatchSoundprint[]) {
   if (!matches.length) return;
