@@ -25,7 +25,7 @@ export async function onRequestPost(context) {
   const resultados = rankear(indice, qvecs[0], {
     filtros: cuerpo.filtros ?? {},
     top: Math.min(10, Math.max(1, cuerpo.top ?? 3)),
-  });
+  }).map(({ ficha, score }) => ({ ...ficha, score }));
   return Response.json({ resultados });
 }
 

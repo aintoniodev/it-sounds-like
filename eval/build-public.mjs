@@ -26,7 +26,7 @@ async function embed(texts) {
 
 const fichas = readdirSync(CATALOGO)
   .filter((f) => f.endsWith(".md") && !f.startsWith("_"))
-    .map((f) => {
+  .map((f) => {
     const raw = readFileSync(join(CATALOGO, f), "utf8");
     const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
     const meta = {};

@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] El sitio desplegado en pages.dev responde a una búsqueda con el top 3 sin descargar modelo alguno en el navegador
-- [ ] El Worker de `/buscar` embea la query con `@cf/baai/bge-m3` y rankea por cosine sobre el índice público
-- [ ] El CI existente extiende su build con el cliente fino y el deploy del Worker, y sigue verde
-- [ ] La carga inicial del cliente es ligera (verificable en la red del navegador: sin pesos de modelo)
+- [x] El sitio desplegado en pages.dev responde a una búsqueda con el top 3 sin descargar modelo alguno en el navegador
+- [x] El Worker de `/buscar` embea la query con `@cf/baai/bge-m3` y rankea por cosine sobre el índice público
+- [x] El CI existente extiende su build con el cliente fino y el deploy del Worker, y sigue verde
+- [x] La carga inicial del cliente es ligera (verificable en la red del navegador: sin pesos de modelo)
