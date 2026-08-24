@@ -3,11 +3,9 @@
 // el índice, rankea por cosine y re-rankea con el feedback de D1 (shrinkage:
 // ver functions/rank.mjs). La honesta se decide sobre el cosine puro — el
 // boost del feedback puede subir el score, pero no disfraza un mal match.
-import { rankear, rerankear, UMBRAL } from "../rank.mjs";
+import { rankear, rerankear, UMBRAL, MODELO } from "../rank.mjs";
 import { cargarIndice } from "./indice.mjs";
 import { RETENCION_MS } from "../feedback.mjs";
-
-const MODELO = "@cf/baai/bge-m3";
 
 export async function onRequestPost(context) {
   const { request, env } = context;

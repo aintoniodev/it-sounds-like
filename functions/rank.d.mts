@@ -13,4 +13,12 @@ export declare function rankear(
   qvec: number[],
   opts?: { filtros?: Partial<Filtros>; top?: number },
 ): { ficha: Record<string, unknown>; score: number }[];
+export declare const MODELO: string;
+export declare const RERANK: Readonly<{ alpha: number; gamma: number; K: number }>;
+export declare function rerankear<T extends { ficha: { slug: string }; score: number }>(
+  entradas: T[],
+  qvec: number[],
+  eventos: { ficha: string; accion: string; ts: number; qvec?: number[] }[],
+  opts?: { alpha?: number; gamma?: number; K?: number; ahora?: number },
+): T[];
 export declare const UMBRAL: number;

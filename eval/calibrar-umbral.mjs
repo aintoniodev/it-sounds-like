@@ -9,10 +9,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { suite } from "./suite.mjs";
 import { coseno } from "../functions/rank.mjs";
+import { embed } from "./embed.mjs";
 
 const CATALOGO = join(import.meta.dirname, "..", "catalogo");
-const BASE = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/@cf/baai/bge-m3`;
-
 // fuera de tema: mismas consultas que motivaron el umbral de la v1
 // (recetas, saludos) más variantes cotidianas claramente ajenas al catálogo
 const FUERA_DE_TEMA = [
@@ -25,16 +24,6 @@ const FUERA_DE_TEMA = [
   "cómo desatascar un fregadero",
 ];
 
-async function embed(texts) {
-  const r = await fetch(BASE, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${process.env.CF_API_TOKEN}`, "content-type": "application/json" },
-    body: JSON.stringify({ text: texts }),
-  });
-  const j = await r.json();
-  if (!j.success) throw new Error(`Workers AI: ${JSON.stringify(j.errors)}`);
-  return j.result.data;
-}
 
 const fichas = readdirSync(CATALOGO)
   .filter((f) => f.endsWith(".md") && !f.startsWith("_"))

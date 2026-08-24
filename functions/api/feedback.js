@@ -4,6 +4,7 @@
 // aquí (una vez por evento): el re-ranking de /api/buscar pesa cada señal
 // por su contexto de query sin re-embedear nada al buscar.
 import { validarEvento } from "../feedback.mjs";
+import { MODELO } from "../rank.mjs";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -18,7 +19,7 @@ export async function onRequestPost(context) {
 
   let qvec = null;
   try {
-    const { data } = await env.AI.run("@cf/baai/bge-m3", { text: [evento.query] });
+    const { data } = await env.AI.run(MODELO, { text: [evento.query] });
     qvec = JSON.stringify(data[0]);
   } catch {
     // sin embedding el evento se guarda igual: cuenta como feedback, no como señal

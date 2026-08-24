@@ -7,20 +7,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { suite } from "./suite.mjs";
 import { rankear, rerankear } from "../functions/rank.mjs";
+import { embed } from "./embed.mjs";
 
 const CATALOGO = join(import.meta.dirname, "..", "catalogo");
-const BASE = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/@cf/baai/bge-m3`;
-
-async function embed(texts) {
-  const r = await fetch(BASE, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${process.env.CF_API_TOKEN}`, "content-type": "application/json" },
-    body: JSON.stringify({ text: texts }),
-  });
-  const j = await r.json();
-  if (!j.success) throw new Error(`Workers AI: ${JSON.stringify(j.errors)}`);
-  return j.result.data;
-}
 
 const fichas = readdirSync(CATALOGO)
   .filter((f) => f.endsWith(".md") && !f.startsWith("_"))
@@ -65,4 +54,8 @@ if (rFb < rBase) {
   console.log("⚠ el feedback BAJÓ el recall: el mecanismo está mal calibrado");
   process.exit(1);
 }
-console.log(rFb > rBase ? "✓ el feedback marcado sube" : "= el feedback no movió nada (α muy tímido con este catálogo)");
+if (rFb === rBase) {
+  console.log("⚠ el feedback marcado no subió ningún acierto: α no mueve nada con este catálogo");
+  process.exit(1);
+}
+console.log(`✓ el feedback marcado sube el recall (+${(rFb - rBase).toFixed(3)})`);

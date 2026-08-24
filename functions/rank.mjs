@@ -5,6 +5,11 @@
 // acaso: cosine honesto, no dot a ciegas.
 import { RETENCION_MS } from "./feedback.mjs";
 
+// el modelo del espacio compartido: el índice se embea en CI contra este
+// runtime y la query en el edge — misma constante para /api/buscar y
+// /api/feedback, una sola fuente.
+export const MODELO = "@cf/baai/bge-m3";
+
 // umbral de honestidad para el espacio de bge-m3: por debajo, el catálogo no
 // tiene nada fuerte para la consulta y la UI lo dice en vez de disfrazar un
 // mal match. Calibrado con el método de la v1 (eval/calibrar-umbral.mjs):
@@ -90,9 +95,10 @@ export function calcularDimensiones(fichas) {
 // cada ficha; n/(n+K) es el shrinkage: con pocos eventos la señal apenas
 // mueve y con muchos satura hacia α (nunca lo supera). El peso de cada
 // evento es wᵢ = max(0, cos(query_actual, query_pasada)) · decay(90 días).
-// La negativa entra ponderada por wᵢ² y γ>1 (β = α·γ > α): penaliza fuerte,
-// pero solo dentro de su contexto de query — fuera, w²≈0 y no actúa.
-// α = 0 apaga el aprendizaje entero y el ranking queda idéntico al cosine.
+// La negativa entra ponderada por wᵢ² y γ>1 (β = α·γ > α): a contexto pleno
+// (w=1) la penalización γ supera al positivo simétrico; a mitad de contexto
+// pesa γ/4, y fuera del contexto (~0) no actúa. α = 0 apaga el aprendizaje
+// entero y el ranking queda idéntico al cosine.
 export const RERANK = Object.freeze({ alpha: 0.1, gamma: 2, K: 5 });
 
 export function rerankear(entradas, qvec, eventos, { alpha = RERANK.alpha, gamma = RERANK.gamma, K = RERANK.K, ahora = Date.now() } = {}) {
@@ -106,7 +112,8 @@ export function rerankear(entradas, qvec, eventos, { alpha = RERANK.alpha, gamma
     if (frescura === 0) continue; // caducado (el cron de purge lo borrará)
     const w = sim * frescura;
     const s = signal.get(e.ficha) ?? { positivos: [], negativos: [] };
-    s[e.accion === "no-encaja" ? "negativos" : "positivos"].push(e.accion === "no-encaja" ? w * w : w);
+    if (e.accion === "no-encaja") s.negativos.push(w * w);
+    else s.positivos.push(w);
     signal.set(e.ficha, s);
   }
   if (!signal.size) return entradas;
@@ -114,10 +121,10 @@ export function rerankear(entradas, qvec, eventos, { alpha = RERANK.alpha, gamma
   return entradas
     .map((r) => {
       const s = signal.get(r.ficha.slug);
-      if (!s) return { ...r, cosine: r.score };
+      if (!s) return r;
       const n = s.positivos.length + s.negativos.length;
       const ajuste = alpha * (n / (n + K)) * (media(s.positivos) - gamma * media(s.negativos));
-      return { ...r, cosine: r.score, score: r.score + ajuste };
+      return { ...r, score: r.score + ajuste };
     })
     .sort((a, b) => b.score - a.score);
 }

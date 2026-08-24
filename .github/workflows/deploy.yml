@@ -42,6 +42,13 @@ jobs:
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: node build-public.mjs
 
+      - name: replay del re-ranking (el feedback marcado no puede bajar el recall)
+        working-directory: eval
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: node replay-rerank.mjs
+
       - name: desplegar a Cloudflare Pages (sitio + Worker de buscar)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}

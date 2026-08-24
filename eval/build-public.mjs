@@ -7,22 +7,11 @@
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, renameSync } from "node:fs";
 import { join, basename } from "node:path";
 import { execSync } from "node:child_process";
+import { embed } from "./embed.mjs";
 
 const CATALOGO = join(import.meta.dirname, "..", "catalogo");
 const OUT_DIR = join(import.meta.dirname, "..", "dist-public");
 const NUCLEO = new Set(["titulo", "artista", "fecha", "spotify"]);
-const BASE = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/@cf/baai/bge-m3`;
-
-async function embed(texts) {
-  const r = await fetch(BASE, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${process.env.CF_API_TOKEN}`, "content-type": "application/json" },
-    body: JSON.stringify({ text: texts }),
-  });
-  const j = await r.json();
-  if (!j.success) throw new Error(`Workers AI: ${JSON.stringify(j.errors)}`);
-  return j.result.data;
-}
 
 const fichas = readdirSync(CATALOGO)
   .filter((f) => f.endsWith(".md") && !f.startsWith("_"))
