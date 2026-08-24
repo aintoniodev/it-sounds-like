@@ -2,7 +2,7 @@
 // servicio real: portadas 3D en sala oscura, cámara al primer match, panel
 // lateral con la ficha. El rank vive en el servidor; aquí solo se pinta.
 import * as THREE from "three";
-import { registrarBusqueda, abrirSoundprint } from "./soundprint";
+import { registrarBusqueda, abrirSoundprint, fraseDe } from "./soundprint";
 
 type FichaLigera = { slug: string; titulo: string; artista: string; cover: string | null };
 type Ficha = FichaLigera & {
@@ -329,18 +329,6 @@ filtrosPanel.appendChild(filaTop);
 // ---- búsqueda y pintado ----
 // primera frase del "Por qué" de una ficha: la palabra del autor que pinta
 // el soundprint
-function fraseDe(f: Ficha): string {
-  const secs: Record<string, string> = {};
-  let intro = "";
-  for (const block of f.body.split(/(?=^##\s)/m)) {
-    const h = block.match(/^##\s+(.+)$/m);
-    if (h) secs[h[1].trim().toLowerCase()] = block.replace(/^##\s+.*$/m, "").trim();
-    else if (block.trim() && !intro) intro = block.trim();
-  }
-  const porque = secs["por qué esta canción"] || intro || f.body;
-  return porque.match(/^[^.!?]+[.!?]/)?.[0] ?? porque;
-}
-
 function resetPaneles() {
   paneles.forEach(({ mesh }) => {
     (mesh.material as THREE.MeshBasicMaterial).opacity = 0.55;

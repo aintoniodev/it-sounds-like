@@ -6,6 +6,7 @@
 // publicación). El feedback (clavo / no me encaja) viaja a /api/feedback:
 // solo la tupla, sin IP ni cookies (el pie lo cuenta en cinco líneas).
 import * as THREE from "three";
+import { registrarBusqueda, abrirSoundprint, fraseDe } from "./soundprint";
 
 type FichaLigera = { slug: string; titulo: string; artista: string; cover: string | null };
 type Ficha = FichaLigera & {
@@ -70,6 +71,11 @@ a { color: inherit; }
 
 .filtros-btn {
   position: absolute; top: 12px; left: 16px; z-index: 3;
+  background: rgba(13,11,9,.65); border: 1px solid rgba(239,233,223,.25); border-radius: 6px;
+  color: inherit; padding: 8px 12px; font-size: 13px;
+}
+.sp-btn {
+  position: absolute; top: 38px; right: 16px; z-index: 3;
   background: rgba(13,11,9,.65); border: 1px solid rgba(239,233,223,.25); border-radius: 6px;
   color: inherit; padding: 8px 12px; font-size: 13px;
 }
@@ -189,8 +195,11 @@ function visitante(): string {
 }
 
 // el evento de feedback: la tupla exacta que D1 guarda, nada más. Si el
-// POST falla, se pierde en silencio — marcar no puede romper la búsqueda
+// POST falla, se pierde en silencio — marcar no puede romper la búsqueda.
+// Un clavo además alimenta el soundprint del visitante (localStorage):
+// es el match confirmado, no cualquier búsqueda
 function feedback(ficha: Ficha, accion: "clavo" | "no-encaja", rank: number | undefined, q: string) {
+  if (accion === "clavo") registrarBusqueda(q, [{ slug: ficha.slug, frase: fraseDe(ficha), dims: ficha.dims }]);
   fetch("/api/feedback", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -223,6 +232,7 @@ escena.innerHTML = `
   <div class="aviso"></div>
   <button class="filtros-btn" type="button">filtros</button>
   <div class="filtros"></div>
+  <button class="sp-btn" type="button">soundprint</button>
   <div class="lista"></div>
   <div class="panel"></div>
   <footer class="pie">
@@ -277,6 +287,7 @@ estado.textContent = `${fichas.length} fichas en sala`;
 const filtros: Filtros = { min: {}, max: {}, en: {} };
 let top = 3;
 filtrosBtn.onclick = () => filtrosPanel.classList.toggle("abierto");
+escena.querySelector<HTMLButtonElement>(".sp-btn")!.onclick = abrirSoundprint;
 
 const tituloBloque = (t: string) => {
   const h = document.createElement("h4");

@@ -8,6 +8,7 @@
 // hash de la query, pulso de frescura en los últimos matches, entrada
 // animada de manchas nuevas y más contraste.
 import * as THREE from "three";
+import { CANAL_IG } from "./canal";
 
 export interface MatchSoundprint {
   slug: string;
@@ -15,10 +16,22 @@ export interface MatchSoundprint {
   dims: Record<string, string | number>;
 }
 
+// la frase con la que una ficha entra al soundprint: la primera del
+// "Por qué esta canción" (o la intro del cuerpo si no hay secciones)
+export function fraseDe(f: { body: string }): string {
+  const secs: Record<string, string> = {};
+  let intro = "";
+  for (const block of f.body.split(/(?=^##\s)/m)) {
+    const h = block.match(/^##\s+(.+)$/m);
+    if (h) secs[h[1].trim().toLowerCase()] = block.replace(/^##\s+.*$/m, "").trim();
+    else if (block.trim() && !intro) intro = block.trim();
+  }
+  const porque = secs["por qué esta canción"] || intro || f.body;
+  return porque.match(/^[^.!?]+[.!?]/)?.[0] ?? porque;
+}
+
 const LS = "soundprint-historial";
 const MAX_MANCHAS = 32;
-// canal de Instagram del autor, editable en un sitio
-const ENLACE_IG = "instagram.com/itdoesoundlike";
 
 export function registrarBusqueda(q: string, matches: MatchSoundprint[]) {
   if (!matches.length) return;
@@ -66,6 +79,7 @@ const css = `
 }
 .sp-controles button:hover { background: rgba(236,231,219,.12); }
 .sp-vacio { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); opacity: .4; font-size: 14px; }
+.sp-canal { position: absolute; bottom: 26px; right: 30px; opacity: .45; font-size: 12px; text-decoration: none; }
 `;
 
 export function abrirSoundprint() {
@@ -84,7 +98,8 @@ export function abrirSoundprint() {
       <div class="sp-cabecera">tu soundprint</div>
       <div class="sp-frases"></div>
       <div class="sp-dims"></div>
-    </div>`;
+    </div>
+    <a class="sp-canal" href="https://${CANAL_IG}" target="_blank">${CANAL_IG}</a>`;
   document.body.appendChild(root);
   const frasesEl = root.querySelector<HTMLElement>(".sp-frases")!;
   const dimsEl = root.querySelector<HTMLElement>(".sp-dims")!;
@@ -284,7 +299,7 @@ export function abrirSoundprint() {
     g.fillText(dimsEl.textContent ?? "", L / 2, L - 62);
     g.globalAlpha = 0.4;
     g.font = mono(14);
-    g.fillText(ENLACE_IG, L / 2, L - 30);
+    g.fillText(CANAL_IG, L / 2, L - 30);
     const a = document.createElement("a");
     a.download = "soundprint.png";
     a.href = out.toDataURL("image/png");
