@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: deps del workspace (vite/three para el cliente público)
+        run: npm ci --ignore-scripts
+
       - name: deps de eval
         working-directory: eval
         run: npm ci --ignore-scripts
