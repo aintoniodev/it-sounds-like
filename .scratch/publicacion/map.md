@@ -26,6 +26,8 @@ La web pública de it sounds like corriendo gratis en Cloudflare: buscador está
 - [El sitio público (prototipo)](issues/06-el-sitio-publico-prototipo.md): Escenario + botones clavo/no-encaja (stub a Worker+D1), privacidad de cinco líneas, soundprint con firma "it sounds like · @cuenta" en pantalla y PNG. Validado en vivo. Además: la capa .tapa del Escenario interceptaba todos los clics; corregido en ambas páginas.
 - [Re-ranking con feedback](issues/03-re-ranking-con-feedback-primer-mecanismo.md): memory-based en el Worker — coseno + α·Σ wᵢ·feedbackᵢ (wᵢ = sim(query,pasada) decaída); negativa pesa más solo en su contexto; shrinkage α·n/(n+K) sin flags; replay en eval/ con suelo 0.754; rank pre-boost auditado por SQL.
 
+- [Repo GitHub + CI + Cloudflare Pages](issues/05-repo-github-ci-y-cloudflare-pages.md): repo público (auditado sin fugas) + CI en cada push (npm ci, suite, índice, deploy) + Pages verificado en https://it-sounds-like.pages.dev. Recall definitivo contra Workers AI: 0.737 < suelo 0.754; decisión de modelo para el DoD.
+
 ## Not yet specified
 
 - **ε-greedy**: solo si la telemetría (rank pre-boost) muestra rich-get-richer.
