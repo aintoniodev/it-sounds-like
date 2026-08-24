@@ -26,13 +26,12 @@ La web pública de it sounds like corriendo gratis en Cloudflare: buscador está
 - [El sitio público (prototipo)](issues/06-el-sitio-publico-prototipo.md): Escenario + botones clavo/no-encaja (stub a Worker+D1), privacidad de cinco líneas, soundprint con firma "it sounds like · @cuenta" en pantalla y PNG. Validado en vivo. Además: la capa .tapa del Escenario interceptaba todos los clics; corregido en ambas páginas.
 - [Re-ranking con feedback](issues/03-re-ranking-con-feedback-primer-mecanismo.md): memory-based en el Worker — coseno + α·Σ wᵢ·feedbackᵢ (wᵢ = sim(query,pasada) decaída); negativa pesa más solo en su contexto; shrinkage α·n/(n+K) sin flags; replay en eval/ con suelo 0.754; rank pre-boost auditado por SQL.
 
+- [DoD del mapa de publicación](issues/07-dod-del-mapa-de-publicacion.md): bge-m3 aceptado (0.737 vs 0.754, ruido de suite, cliente ligero); el sitio público nace de la v1 real (requiere integrar rama `v1` en main); feedback Worker+D1, re-ranking con shrinkage, PNG firmado con `ENLACE_IG`, privacidad publicada, analytics: nada (la tabla de feedback ES la analítica).
 - [Repo GitHub + CI + Cloudflare Pages](issues/05-repo-github-ci-y-cloudflare-pages.md): repo público (auditado sin fugas) + CI en cada push (npm ci, suite, índice, deploy) + Pages verificado en https://it-sounds-like.pages.dev. Recall definitivo contra Workers AI: 0.737 < suelo 0.754; decisión de modelo para el DoD.
 
 ## Not yet specified
 
-- **ε-greedy**: solo si la telemetría (rank pre-boost) muestra rich-get-richer.
-- **Elección definitiva del modelo público**: la suite local dio 0.719 con bge-m3 (ONNX) contra el suelo 0.754 de e5-small; la pasada que vale es contra Workers AI real, tras el wizard del ticket 05. Si no supera el suelo, decide el usuario (aceptar la diferencia por cliente ligero, o híbrido).
-- **Analytics del sitio**: probablemente nada o mínimo; se decide al cerrar el mapa.
+<!-- vacío: mapa completo (7/7), la niebla restante quedó fuera del destino -->
 
 ## Out of scope
 
@@ -40,6 +39,7 @@ La web pública de it sounds like corriendo gratis en Cloudflare: buscador está
 - **Dominio propio**: subdominio gratuito primero; cambiar es diez minutos de DNS cuando importe.
 - **Fine-tuning de embeddings**: el mapa incluye el PRIMER mecanismo de aprendizaje (re-ranking); entrenar modelos propios es esfuerzo posterior.
 - **Pagar por infraestructura**: gratis mientras sea posible; lo que encarezca el coste se queda fuera o espera.
+- **ε-greedy**: fuera del build; solo si la telemetría (rank pre-boost) muestra rich-get-richer.
 
 ## (referencias del esfuerzo v1)
 
