@@ -1,0 +1,9 @@
+# Configuración de Cloudflare Pages del sitio público: mismo proyecto que
+# despliega el CI (dist-public), con el binding de Workers AI que usa
+# /api/buscar para embedear la query con bge-m3 en el edge.
+name = "it-sounds-like"
+pages_build_output_dir = "dist-public"
+compatibility_date = "2026-08-24"
+
+[ai]
+binding = "AI"

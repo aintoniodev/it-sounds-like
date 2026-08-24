@@ -39,10 +39,9 @@ jobs:
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: node build-public.mjs
 
-      - name: desplegar a Cloudflare Pages
-        working-directory: eval
+      - name: desplegar a Cloudflare Pages (sitio + Worker de buscar)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           PAGES_PROJECT: ${{ vars.PAGES_PROJECT || 'it-sounds-like' }}
-        run: npx --yes wrangler pages deploy ../dist-public --project-name="${PAGES_PROJECT}"
+        run: npx --yes wrangler pages deploy dist-public --config wrangler.toml --project-name="${PAGES_PROJECT}"

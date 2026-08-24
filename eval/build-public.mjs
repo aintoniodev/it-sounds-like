@@ -1,10 +1,12 @@
-// Construye el desplegable público (placeholder del ticket 05): indice.json
-// con las fichas embedeadas contra Workers AI (runtime real de producción,
-// sin prefijos bge-m3) + una página mínima. El sitio de verdad llega con el
-// ticket 06. Requiere CF_API_TOKEN y CF_ACCOUNT_ID. Sin portadas: aún no hay
-// UI que las muestre.
-import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+// Construye el desplegable público: index.json con las fichas embedeadas
+// contra Workers AI (runtime real de producción, sin prefijos bge-m3) para
+// la función de /api/buscar, catalogo.json ligero (sin vectores) para el
+// cliente, y el cliente fino construido con vite.
+// Requiere CF_API_TOKEN y CF_ACCOUNT_ID. Sin portadas: las fichas aún no
+// llevan cover resuelto.
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, renameSync } from "node:fs";
 import { join, basename } from "node:path";
+import { execSync } from "node:child_process";
 
 const CATALOGO = join(import.meta.dirname, "..", "catalogo");
 const OUT_DIR = join(import.meta.dirname, "..", "dist-public");
@@ -24,7 +26,7 @@ async function embed(texts) {
 
 const fichas = readdirSync(CATALOGO)
   .filter((f) => f.endsWith(".md") && !f.startsWith("_"))
-  .map((f) => {
+    .map((f) => {
     const raw = readFileSync(join(CATALOGO, f), "utf8");
     const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
     const meta = {};
@@ -50,12 +52,17 @@ const entries = fichas.map((f, i) => ({
   vector: vecs[i],
 }));
 writeFileSync(join(OUT_DIR, "index.json"), JSON.stringify(entries));
+// el cliente no necesita los vectores: el rank vive en el edge
+const sinVector = ({ vector, ...f }) => f;
+writeFileSync(join(OUT_DIR, "catalogo.json"), JSON.stringify(entries.map(sinVector)));
 
-writeFileSync(
-  join(OUT_DIR, "index.html"),
-  `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>it sounds like</title><style>
-body{margin:0;height:100vh;display:grid;place-items:center;background:#0d0b09;color:#efe9df;font-family:ui-monospace,"Departure Mono",monospace}
-div{text-align:center}h1{font-weight:400;letter-spacing:.3em;text-transform:uppercase;font-size:20px}p{opacity:.55;font-size:14px}
-</style></head><body><div><h1>it sounds like</h1><p>describe cómo quieres sentirte — próximamente</p></div></body></html>`,
-);
-console.log(`${entries.length} fichas → ${OUT_DIR}/index.json (+ placeholder). dims: ${vecs[0].length}`);
+// las Pages Functions (el Worker de buscar) viven en /functions de la raíz:
+// wrangler pages deploy las recoge de ahí, junto al wrangler.toml
+
+// cliente fino: vite construye publico.html en dist-public y lo promovemos
+// a index.html (la entrada que sirve Pages)
+const WEB = join(import.meta.dirname, "..", "web");
+execSync("npx vite build --config vite.public.config.ts", { cwd: WEB, stdio: "inherit" });
+renameSync(join(OUT_DIR, "publico.html"), join(OUT_DIR, "index.html"));
+
+console.log(`${entries.length} fichas → ${OUT_DIR}/index.json (+ catalogo.json, functions, cliente). dims: ${vecs[0].length}`);
