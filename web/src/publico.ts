@@ -44,6 +44,11 @@ a { color: inherit; }
   border-radius: 999px; padding: 12px 22px; color: inherit; outline: none; backdrop-filter: blur(6px);
 }
 .tapa input::placeholder { color: rgba(239,233,223,.4); }
+.tapa .sorprendeme {
+  background: rgba(239,233,223,.08); border: 1px solid rgba(239,233,223,.25);
+  border-radius: 999px; color: inherit; padding: 10px 16px; font-size: 14px;
+}
+.tapa .sorprendeme:hover { background: rgba(239,233,223,.18); }
 .estado { position: absolute; top: 12px; right: 16px; z-index: 2; font-size: 12px; opacity: .7; }
 .aviso {
   position: absolute; left: 50%; top: 22vh; transform: translateX(-50%); z-index: 2;
@@ -185,6 +190,7 @@ escena.innerHTML = `
   <div class="tapa">
     <form>
       <input placeholder="¿cómo quieres que te suene?" autocomplete="off" autofocus />
+      <button type="button" class="sorprendeme">sorpréndeme</button>
     </form>
   </div>
   <div class="estado"></div>
@@ -366,6 +372,18 @@ input.closest("form")!.onsubmit = (e) => {
   buscar();
 };
 
+// salir de la burbuja: una ficha al azar del catálogo, sin query de por medio
+escena.querySelector<HTMLButtonElement>(".sorprendeme")!.onclick = async () => {
+  const { ficha } = await pedirJSON<{ ficha: Ficha }>("/api/sorpresa");
+  input.value = "";
+  aviso.style.display = "none";
+  lista.replaceChildren();
+  opacidad((slug) => (slug === ficha.slug ? 1 : 0.1));
+  viajarA(ficha.slug);
+  abrirPanel(ficha, -1, "sorpréndeme");
+  estado.textContent = `sorpréndeme: ${ficha.titulo} — ${ficha.artista}`;
+};
+
 async function buscar() {
   const q = input.value.trim();
   panel.style.display = "none";
@@ -376,7 +394,7 @@ async function buscar() {
     return;
   }
   estado.textContent = "buscando…";
-  const { resultados } = await pedirJSON<{ resultados: Ficha[] }>("/api/buscar", {
+  const { resultados, umbral } = await pedirJSON<{ resultados: Ficha[]; umbral: number }>("/api/buscar", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ q, filtros, top }),
@@ -385,6 +403,15 @@ async function buscar() {
   if (!resultados.length) {
     opacidad(() => undefined);
     aviso.textContent = "nada del catálogo pasa esos filtros";
+    aviso.style.display = "block";
+    lista.replaceChildren();
+    return;
+  }
+  // línea honesta: el edge dice cuánto es "fuerte" para este espacio; por
+  // debajo no se disfraza un mal match de respuesta
+  if (resultados[0].score! < umbral) {
+    opacidad(() => undefined);
+    aviso.textContent = "el catálogo aún no tiene nada fuerte para eso";
     aviso.style.display = "block";
     lista.replaceChildren();
     return;

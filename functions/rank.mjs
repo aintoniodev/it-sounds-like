@@ -4,6 +4,15 @@
 // bindings. bge-m3 devuelve vectores normalizados, pero normalizamos por si
 // acaso: cosine honesto, no dot a ciegas.
 
+// umbral de honestidad para el espacio de bge-m3: por debajo, el catálogo no
+// tiene nada fuerte para la consulta y la UI lo dice en vez de disfrazar un
+// mal match. Calibrado con el método de la v1 (eval/calibrar-umbral.mjs):
+// las 19 consultas reales de la suite dan top-1 ≥ 0.434; las fuera de tema,
+// ≤ 0.440. El margen se solapa en 0.006 — la suite es el contrato, así que
+// el umbral se queda pegado al suelo real y "previsión del tiempo para
+// mañana" (0.440) se cuela: intercambio documentado, no accidente.
+export const UMBRAL = 0.43;
+
 // un filtro exige la dimensión: filtrar por energia o momento_del_dia deja
 // fuera a las fichas que no declaran esa clave (misma semántica que la v1)
 export function pasaFiltros(ficha, filtros) {

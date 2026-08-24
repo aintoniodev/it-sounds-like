@@ -2,7 +2,8 @@
 // embedea la query con bge-m3 en el mismo runtime contra el que CI embebeó
 // el índice, y devuelve el ranking con las fichas (sin vectores) y su score.
 // El índice viaja como asset estático junto al sitio; se cachea en el edge.
-import { rankear } from "../rank.mjs";
+import { rankear, UMBRAL } from "../rank.mjs";
+import { cargarIndice } from "./indice.mjs";
 
 const MODELO = "@cf/baai/bge-m3";
 
@@ -26,15 +27,5 @@ export async function onRequestPost(context) {
     filtros: cuerpo.filtros ?? {},
     top: Math.min(10, Math.max(1, cuerpo.top ?? 3)),
   }).map(({ ficha, score }) => ({ ...ficha, score }));
-  return Response.json({ resultados });
-}
-
-async function cargarIndice(request) {
-  const url = new URL("/index.json", request.url);
-  let r = await caches.default.match(url);
-  if (!r) {
-    r = await fetch(url);
-    if (r.ok) await caches.default.put(url, r.clone());
-  }
-  return r.json();
+  return Response.json({ resultados, umbral: UMBRAL });
 }
