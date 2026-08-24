@@ -8,6 +8,7 @@
 import * as THREE from "three";
 import { registrarBusqueda, abrirSoundprint, matchDe } from "./soundprint";
 import { calcularDimensiones } from "../../functions/rank.mjs";
+import { leerVisitante, nuevoVisitante } from "./identidad";
 
 type FichaLigera = { slug: string; titulo: string; artista: string; cover: string | null };
 type Ficha = FichaLigera & {
@@ -150,20 +151,10 @@ async function pedirJSON<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 // visitante: hash aleatorio en localStorage, la única identidad que existe.
-// Lo genera el navegador, no el servidor; borrarlo es borrar la identidad.
-// Sin localStorage (bloqueado), identidad nueva por visita: nadie colapsa
-// en un id compartido.
+// Lo genera el navegador, no el servidor; borrarlo (página de privacidad)
+// es borrar la identidad. Sin localStorage: identidad nueva por visita.
 function visitante(): string {
-  try {
-    let v = localStorage.getItem("visitante");
-    if (!v) {
-      v = crypto.randomUUID();
-      localStorage.setItem("visitante", v);
-    }
-    return v;
-  } catch {
-    return crypto.randomUUID();
-  }
+  return leerVisitante() ?? nuevoVisitante();
 }
 
 // el evento de feedback: la tupla exacta que D1 guarda, nada más. Si el
@@ -213,7 +204,7 @@ escena.innerHTML = `
     el identificador vive solo en tu navegador y puedes borrarlo cuando quieras.
     todo se purga a los 90 días.
     sin telemetría de terceros: esto es toda la analítica del sitio.
-    <a href="/privacidad.html">privacidad</a>
+    <a href="/privacidad">privacidad</a>
   </footer>`;
 app.appendChild(escena);
 

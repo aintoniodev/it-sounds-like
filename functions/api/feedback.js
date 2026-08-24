@@ -5,15 +5,12 @@
 // por su contexto de query sin re-embedear nada al buscar.
 import { validarEvento } from "../feedback.mjs";
 import { MODELO } from "../rank.mjs";
+import { leerCuerpo } from "./cuerpo.mjs";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  let cuerpo;
-  try {
-    cuerpo = await request.json();
-  } catch {
-    return new Response("cuerpo no es JSON", { status: 400 });
-  }
+  const { cuerpo, error } = await leerCuerpo(request);
+  if (error) return error;
   const evento = validarEvento(cuerpo);
   if (!evento) return new Response("evento malformado", { status: 400 });
 

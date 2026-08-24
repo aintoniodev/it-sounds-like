@@ -1,7 +1,9 @@
 // La página de privacidad del sitio público (ticket 06): la verdad de la
 // tabla feedback de D1 en lenguaje claro, campo por campo, y el borrado del
-// identificador del visitante — que elimina el hash del navegador y las
-// filas que lo llevan. Sin frases legales: esto es todo lo que hay.
+// identificador del visitante — que elimina el hash del navegador, su
+// historial local y las filas de D1 que lo llevan. Sin frases legales.
+import { leerVisitante, borrarVisitante } from "./identidad";
+
 const app = document.getElementById("app")!;
 
 const css = `
@@ -71,12 +73,9 @@ app.innerHTML = `
 
 const hecho = app.querySelector<HTMLElement>(".hecho")!;
 app.querySelector<HTMLButtonElement>(".borrar")!.onclick = async () => {
-  let visitante: string | null = null;
-  try {
-    visitante = localStorage.getItem("visitante");
-    localStorage.removeItem("visitante");
-  } catch {}
-  let borradas = false;
+  const visitante = leerVisitante();
+  borrarVisitante();
+  let filas: number | null = null;
   if (visitante) {
     try {
       const r = await fetch("/api/privacidad", {
@@ -84,13 +83,19 @@ app.querySelector<HTMLButtonElement>(".borrar")!.onclick = async () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ visitante }),
       });
-      borradas = r.ok;
+      if (r.ok) filas = (await r.json()).borradas ?? 0;
     } catch {}
   }
   hecho.style.display = "block";
-  hecho.textContent = visitante
-    ? borradas
-      ? "hecho: tu hash ya no está en tu navegador y tus marcas anteriores se han borrado. si vuelves, empiezas de cero."
-      : "tu hash ya no está en tu navegador; no pude alcanzar al servidor para borrar tus filas — se purgan solas a los 90 días."
-    : "no había identificador que borrar: este navegador nunca marcó nada (o ya lo borraste).";
+  if (!visitante) {
+    hecho.textContent =
+      "no había identificador guardado en este navegador. si alguna vez marcó algo sin poder guardarlo, esas filas no llevan tu huella y se purgan a los 90 días.";
+    return;
+  }
+  hecho.textContent =
+    filas === null
+      ? "tu hash y tu historial local ya no están; no pude alcanzar al servidor para borrar tus filas — se purgan solas a los 90 días."
+      : filas > 0
+        ? `hecho: tu hash y tu historial local borrados, y ${filas} ${filas === 1 ? "marca tuya eliminada" : "marcas tuyas eliminadas"} de la base. si vuelves, empiezas de cero.`
+        : "hecho: tu hash y tu historial local borrados. no había marcas tuyas en la base (se purgan a los 90 días).";
 };

@@ -7,6 +7,13 @@ export const CAMPOS = ["query", "ficha", "accion", "ts", "rank_pre_boost", "visi
 // solo el rank es opcional: sorpréndeme no tiene puesto en el ranking
 const OPCIONALES = ["rank_pre_boost"];
 
+// el visitante es un hash corto y opaco (UUID del navegador); nada de
+// novelas en el campo
+export function validarVisitante(v) {
+  if (typeof v !== "string" || !v.trim() || v.length > 100) return null;
+  return v.trim();
+}
+
 // devuelve el evento normalizado o null si viene mal formado: el Worker
 // rechaza en seco (400) y nada tocioso llega a la base
 export function validarEvento(cuerpo) {
@@ -22,6 +29,7 @@ export function validarEvento(cuerpo) {
   // el purge para siempre y uno en segundos se purgaría al instante
   if (!Number.isFinite(ts) || ts < 1e12 || ts > Date.now() + 24 * 60 * 60 * 1000) return null;
   if (rank_pre_boost !== undefined && !Number.isInteger(rank_pre_boost)) return null;
-  if (typeof visitante !== "string" || !visitante.trim()) return null;
-  return { query: query.trim(), ficha, accion, ts, rank_pre_boost, visitante };
+  const v = validarVisitante(visitante);
+  if (!v) return null;
+  return { query: query.trim(), ficha, accion, ts, rank_pre_boost, visitante: v };
 }

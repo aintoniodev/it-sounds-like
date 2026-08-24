@@ -5,16 +5,13 @@
 // boost del feedback puede subir el score, pero no disfraza un mal match.
 import { rankear, rerankear, UMBRAL, MODELO } from "../rank.mjs";
 import { cargarIndice } from "./indice.mjs";
+import { leerCuerpo } from "./cuerpo.mjs";
 import { RETENCION_MS } from "../feedback.mjs";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  let cuerpo;
-  try {
-    cuerpo = await request.json();
-  } catch {
-    return new Response("cuerpo no es JSON", { status: 400 });
-  }
+  const { cuerpo, error } = await leerCuerpo(request);
+  if (error) return error;
   const q = typeof cuerpo?.q === "string" ? cuerpo.q.trim() : "";
   if (!q) return new Response("falta la query", { status: 400 });
 
