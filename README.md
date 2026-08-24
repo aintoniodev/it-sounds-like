@@ -31,3 +31,15 @@ npm start
 Las decisiones de producto viven en `.scratch/it-sounds-like/map.md` (mapa del esfuerzo) y `.scratch/it-sounds-like/spec.md` (spec v1). El vocabulario canónico, en `CONTEXT.md`.
 
 La señal de Instagram del soundprint (en pantalla y en el PNG exportado) es la constante `CANAL_IG` en `web/src/canal.ts`, única fuente.
+
+## Carga sobre el free tier de Cloudflare
+
+Perfil objetivo: 1.000 visitantes/día × ~3 búsquedas. Márgenes medidos contra los límites del tier gratuito (verificación con fuentes primarias en `.scratch/publicacion/issues/01-limites-reales-de-cloudflare-para-nuestra-carga.md`):
+
+| Consumo | Perfil | Límite free | Margen |
+|---|---|---|---|
+| Workers AI (bge-m3, neurons) | ~163/día | 10.000/día | 61× |
+| Requests de Functions | 6.000/día peor caso | 100.000/día | 6 % |
+| Feedback en D1 | 300–3.000 rows/día | 100.000 rows/día | 0,3–3 % |
+
+Sin telemetría de terceros: la tabla de feedback es toda la analítica. El recall de cada run (en frío y con feedback) queda en el summary del CI.

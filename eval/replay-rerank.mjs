@@ -3,7 +3,7 @@
 // functions/rank.mjs), con y sin feedback. El feedback sintético es el
 // ground truth de la suite: cada ficha esperada marcada como clavo bajo su
 // propia consulta. Requiere CF_API_TOKEN y CF_ACCOUNT_ID.
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, appendFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { suite } from "./suite.mjs";
 import { rankear, rerankear } from "../functions/rank.mjs";
@@ -59,3 +59,10 @@ if (rFb === rBase) {
   process.exit(1);
 }
 console.log(`✓ el feedback marcado sube el recall (+${(rFb - rBase).toFixed(3)})`);
+
+if (process.env.GITHUB_STEP_SUMMARY) {
+  appendFileSync(
+    process.env.GITHUB_STEP_SUMMARY,
+    `### re-ranking con feedback (bge-m3)\n\n- recall@3 en frío (suelo público): **${rBase.toFixed(3)}**\n- recall@3 con feedback de la suite: **${rFb.toFixed(3)}** (+${(rFb - rBase).toFixed(3)})\n- el paso falla si el feedback baja el recall o no mueve nada\n`,
+  );
+}
