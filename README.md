@@ -30,4 +30,4 @@ npm start
 
 Las decisiones de producto viven en `.scratch/it-sounds-like/map.md` (mapa del esfuerzo) y `.scratch/it-sounds-like/spec.md` (spec v1). El vocabulario canónico, en `CONTEXT.md`.
 
-La señal de Instagram del export del soundprint es la constante `ENLACE_IG` en `web/src/soundprint.ts`.
+La señal de Instagram del soundprint (en pantalla y en el PNG exportado) es la constante `CANAL_IG` en `web/src/canal.ts`, única fuente.

@@ -30,13 +30,27 @@ export function fraseDe(f: { body: string }): string {
   return porque.match(/^[^.!?]+[.!?]/)?.[0] ?? porque;
 }
 
+// el match listo para registrar: quien llama no repite la forma
+export function matchDe(f: { slug: string; body: string; dims: Record<string, string | number> }): MatchSoundprint {
+  return { slug: f.slug, frase: fraseDe(f), dims: f.dims };
+}
+
 const LS = "soundprint-historial";
 const MAX_MANCHAS = 32;
 
 export function registrarBusqueda(q: string, matches: MatchSoundprint[]) {
   if (!matches.length) return;
   const historial = leerHistorial();
-  historial.push({ q, matches, t: Date.now() });
+  // la misma query acumula en una sola entrada: repetir búsqueda (o clavar
+  // varias fichas bajo ella) no infla el contador ni el peso por repetición
+  const prev = historial[historial.length - 1];
+  if (prev?.q === q) {
+    const slugs = new Set(prev.matches.map((m) => m.slug));
+    prev.matches = [...prev.matches, ...matches.filter((m) => !slugs.has(m.slug))];
+    prev.t = Date.now();
+  } else {
+    historial.push({ q, matches, t: Date.now() });
+  }
   try {
     localStorage.setItem(LS, JSON.stringify(historial.slice(-64)));
   } catch {}
@@ -99,7 +113,7 @@ export function abrirSoundprint() {
       <div class="sp-frases"></div>
       <div class="sp-dims"></div>
     </div>
-    <a class="sp-canal" href="https://${CANAL_IG}" target="_blank">${CANAL_IG}</a>`;
+    <a class="sp-canal" href="https://${CANAL_IG}" target="_blank" rel="noopener noreferrer">${CANAL_IG}</a>`;
   document.body.appendChild(root);
   const frasesEl = root.querySelector<HTMLElement>(".sp-frases")!;
   const dimsEl = root.querySelector<HTMLElement>(".sp-dims")!;

@@ -2,7 +2,7 @@
 // servicio real: portadas 3D en sala oscura, cámara al primer match, panel
 // lateral con la ficha. El rank vive en el servidor; aquí solo se pinta.
 import * as THREE from "three";
-import { registrarBusqueda, abrirSoundprint, fraseDe } from "./soundprint";
+import { registrarBusqueda, abrirSoundprint, matchDe } from "./soundprint";
 
 type FichaLigera = { slug: string; titulo: string; artista: string; cover: string | null };
 type Ficha = FichaLigera & {
@@ -413,7 +413,7 @@ async function buscar() {
   opacidad((slug) => topMap.get(slug));
   registrarBusqueda(
     q,
-    resultados.map((r) => ({ slug: r.slug, frase: fraseDe(r), dims: r.dims })),
+    resultados.map(matchDe),
   );
   lista.replaceChildren(
     ...resultados.map((r, i) => {
@@ -442,7 +442,7 @@ escena.querySelector<HTMLButtonElement>(".sorprendeme")!.onclick = async () => {
   opacidad((slug) => (slug === ficha.slug ? 1 : 0.1));
   viajarA(ficha.slug);
   abrirPanel(ficha);
-  registrarBusqueda("sorpréndeme", [{ slug: ficha.slug, frase: fraseDe(ficha), dims: ficha.dims }]);
+  registrarBusqueda("sorpréndeme", [matchDe(ficha)]);
   estado.textContent = `sorpréndeme: ${ficha.titulo} — ${ficha.artista}`;
 };
 

@@ -6,7 +6,7 @@
 // publicación). El feedback (clavo / no me encaja) viaja a /api/feedback:
 // solo la tupla, sin IP ni cookies (el pie lo cuenta en cinco líneas).
 import * as THREE from "three";
-import { registrarBusqueda, abrirSoundprint, fraseDe } from "./soundprint";
+import { registrarBusqueda, abrirSoundprint, matchDe } from "./soundprint";
 
 type FichaLigera = { slug: string; titulo: string; artista: string; cover: string | null };
 type Ficha = FichaLigera & {
@@ -69,16 +69,13 @@ a { color: inherit; }
 .resu .fb button:hover { background: rgba(239,233,223,.14); }
 .resu .fb button[aria-pressed="true"] { background: #b3541e; border-color: transparent; }
 
-.filtros-btn {
-  position: absolute; top: 12px; left: 16px; z-index: 3;
+.filtros-btn, .sp-btn {
+  position: absolute; z-index: 3;
   background: rgba(13,11,9,.65); border: 1px solid rgba(239,233,223,.25); border-radius: 6px;
   color: inherit; padding: 8px 12px; font-size: 13px;
 }
-.sp-btn {
-  position: absolute; top: 38px; right: 16px; z-index: 3;
-  background: rgba(13,11,9,.65); border: 1px solid rgba(239,233,223,.25); border-radius: 6px;
-  color: inherit; padding: 8px 12px; font-size: 13px;
-}
+.filtros-btn { top: 12px; left: 16px; }
+.sp-btn { top: 38px; right: 16px; }
 .filtros {
   position: absolute; top: 52px; left: 16px; z-index: 3; width: 260px;
   background: rgba(13,11,9,.85); border: 1px solid rgba(239,233,223,.2); border-radius: 10px;
@@ -199,7 +196,7 @@ function visitante(): string {
 // Un clavo además alimenta el soundprint del visitante (localStorage):
 // es el match confirmado, no cualquier búsqueda
 function feedback(ficha: Ficha, accion: "clavo" | "no-encaja", rank: number | undefined, q: string) {
-  if (accion === "clavo") registrarBusqueda(q, [{ slug: ficha.slug, frase: fraseDe(ficha), dims: ficha.dims }]);
+  if (accion === "clavo") registrarBusqueda(q, [matchDe(ficha)]);
   fetch("/api/feedback", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -387,6 +384,8 @@ function viajarA(slug: string) {
 function cablearFeedback(fb: HTMLElement, ficha: Ficha, rankPos: number | undefined, q: string) {
   for (const b of fb.querySelectorAll<HTMLButtonElement>("button")) {
     b.onclick = () => {
+      // ya marcado: ni evento duplicado a D1 ni doble mancha en el soundprint
+      if (b.getAttribute("aria-pressed") === "true") return;
       feedback(ficha, b.dataset.a as "clavo" | "no-encaja", rankPos === undefined ? undefined : rankPos + 1, q);
       for (const otro of fb.querySelectorAll("button")) otro.setAttribute("aria-pressed", "false");
       b.setAttribute("aria-pressed", "true");
