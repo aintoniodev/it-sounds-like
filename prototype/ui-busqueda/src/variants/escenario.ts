@@ -5,11 +5,11 @@ import { loadIndex, getExtractor, rank, type Ficha, type Filtros } from "../lib/
 
 const css = `
 .escenario { position: fixed; inset: 0; background: #0d0b09; color: #efe9df; overflow: hidden; }
-.escenario .tapa { position: absolute; inset: 0; display: grid; place-items: start center; padding-top: 5vh; }
+.escenario .tapa { position: absolute; inset: 0; display: grid; place-items: start center; padding-top: 5vh; pointer-events: none; }
 .escenario input {
   width: min(640px, 80vw); font: inherit; font-size: 22px; text-align: center;
   background: rgba(239,233,223,.08); border: 1px solid rgba(239,233,223,.25);
-  border-radius: 999px; padding: 12px 22px; color: inherit; outline: none; backdrop-filter: blur(6px);
+  border-radius: 999px; padding: 12px 22px; color: inherit; outline: none; backdrop-filter: blur(6px); pointer-events: auto;
 }
 .escenario input::placeholder { color: rgba(239,233,223,.4); }
 .escenario .lista { position: absolute; left: 24px; bottom: 72px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; display: grid; gap: 6px; }

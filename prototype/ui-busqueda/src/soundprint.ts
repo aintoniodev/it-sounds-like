@@ -34,6 +34,10 @@ const css = `
   position: absolute; bottom: 26px; left: 0; right: 0; text-align: center;
   font-family: "Departure Mono", monospace; font-size: 12px; opacity: .5; letter-spacing: .06em;
 }
+.sp-firma {
+  position: absolute; bottom: 8px; left: 0; right: 0; text-align: center;
+  font-family: "Departure Mono", monospace; font-size: 10px; opacity: .35; letter-spacing: .12em;
+}
 .sp-controles { position: absolute; top: 26px; right: 30px; display: grid; gap: 8px; }
 .sp-controles button {
   font-family: "Departure Mono", monospace; font-size: 12px;
@@ -80,8 +84,12 @@ async function main() {
       <div class="sp-cabecera">tu soundprint</div>
       <div class="sp-frases"></div>
       <div class="sp-dims"></div>
+      <div class="sp-firma"></div>
     </div>
   </div>`;
+  const cuenta = new URLSearchParams(location.search).get("cuenta");
+  const firma = cuenta ? `it sounds like · @${cuenta}` : "it sounds like";
+  app.querySelector<HTMLElement>(".sp-firma")!.textContent = firma;
   const root = app.querySelector<HTMLElement>(".soundprint")!;
   const estado = app.querySelector<HTMLElement>(".sp-estado")!;
   const frasesEl = app.querySelector<HTMLElement>(".sp-frases")!;
@@ -242,6 +250,11 @@ async function main() {
     g.globalAlpha = 0.5;
     g.font = mono(15);
     g.fillText(dimsEl.textContent ?? "", L / 2, L - 52);
+    g.globalAlpha = 0.4;
+    g.font = mono(13);
+    g.letterSpacing = "3px";
+    g.fillText(firma.toUpperCase(), L / 2, L - 28);
+    g.letterSpacing = "0px";
     const a = document.createElement("a");
     a.download = "soundprint.png";
     a.href = out.toDataURL("image/png");
