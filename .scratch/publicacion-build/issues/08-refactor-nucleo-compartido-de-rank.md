@@ -6,8 +6,12 @@ Origen: hallazgos del review de b34794f..e9495e8 (eje Standards). No los arregl�
 
 **Blocked by:** None (can start immediately; conviene hacerlo antes de que 05 construya re-ranking sobre rank.mjs).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `pasaFiltros`, `calcularDimensiones` y la aritmética cosine/dot viven en un único módulo consumido por server, functions y (directa o indirectamente) cliente
-- [ ] El par de botones de feedback se pinta desde un solo helper en `publico.ts`
-- [ ] La suite completa sigue verde y el recall del harness no cambia (es refactor, no semántica)
+- [x] `pasaFiltros`, `calcularDimensiones` y la aritmética cosine/dot viven en un único módulo consumido por server, functions y (directa o indirectamente) cliente
+- [x] El par de botones de feedback se pinta desde un solo helper en `publico.ts`
+- [x] La suite completa sigue verde y el recall del harness no cambia (es refactor, no semántica)
+
+## Comments
+
+**2026-08-24 (agente):** el hogar único es `functions/rank.mjs` (puro, ya probado sin HTTP): `server/servicio.mjs` importa pasaFiltros/calcularDimensiones/coseno y pierde su `dot` local (vectores e5 normalizados ⇒ mismo ranking; paridad medida con `npm run eval` antes y después del stash: 0.772 idéntico, suelo 0.75). El cliente importa `calcularDimensiones` con contrato tipado vía `functions/rank.d.mts`. El markup del par clavo/no-me-encaja vive en `fbDe` (panel y lista lo usan). El contrato `{min,max,en}` viaja tipado en el cliente; no hizo falta el tipo compartido adicional que el ticket dejaba opcional.
