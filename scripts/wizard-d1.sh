@@ -227,9 +227,15 @@ pause "Enter para crear la base."
 stage "Crear D1 it-sounds-like-feedback"
 D1_ID=$(_existing D1_DATABASE_ID || true)
 if [[ -z "$D1_ID" ]]; then
-  SALIDA=$(npx --yes wrangler d1 create it-sounds-like-feedback 2>&1) || { echo "$SALIDA"; exit 1; }
-  D1_ID=$(printf '%s' "$SALIDA" | grep -oE '[0-9a-f]{32}' | head -n1)
-  [[ -n "$D1_ID" ]] || { echo "$SALIDA"; warn "no pude extraer el database_id; créala a mano y re-ejecuta"; exit 1; }
+  SALIDA=$(npx --yes wrangler d1 create it-sounds-like-feedback 2>&1) || true
+  D1_ID=$(printf '%s' "$SALIDA" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -n1)
+  if [[ -z "$D1_ID" ]]; then
+    # ya existía (u otra razón): pedirle el id a la API
+    D1_ID=$(curl -s "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/d1/database" \
+      -H "Authorization: Bearer $CF_API_TOKEN" \
+      | grep -oE '"uuid":"[0-9a-f-]{36}"' | head -n1 | cut -d'"' -f4)
+  fi
+  [[ -n "$D1_ID" ]] || { echo "$SALIDA"; warn "no pude obtener el database_id; crea la base a mano y re-ejecuta"; exit 1; }
   write_env D1_DATABASE_ID "$D1_ID"
 else
   say "La base ya estaba creada (D1_DATABASE_ID en .env). ✓"
