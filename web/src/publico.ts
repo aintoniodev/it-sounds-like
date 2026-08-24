@@ -166,7 +166,7 @@ function calcularDimensiones(fichas: Ficha[]): DimInfo {
 
 // stub del Worker de feedback: en el build real será un POST a /api/feedback
 // con {query, ficha, acción, ts, rank_pre_boost, visitante}
-function feedback(ficha: Ficha, accion: "clavo" | "no-encaja", rank: number, q: string) {
+function feedback(ficha: Ficha, accion: "clavo" | "no-encaja", rank: number | undefined, q: string) {
   const evento = { query: q, ficha: ficha.slug, accion, ts: Date.now(), rank_pre_boost: rank };
   let log: unknown[] = [];
   try {
@@ -340,17 +340,17 @@ function viajarA(slug: string) {
   if (p) objetivo.copy(p.mesh.position).setZ(2.2);
 }
 
-function cablearFeedback(fb: HTMLElement, ficha: Ficha, rankPos: number, q: string) {
+function cablearFeedback(fb: HTMLElement, ficha: Ficha, rankPos: number | undefined, q: string) {
   for (const b of fb.querySelectorAll<HTMLButtonElement>("button")) {
     b.onclick = () => {
-      feedback(ficha, b.dataset.a as "clavo" | "no-encaja", rankPos + 1, q);
+      feedback(ficha, b.dataset.a as "clavo" | "no-encaja", rankPos === undefined ? undefined : rankPos + 1, q);
       for (const otro of fb.querySelectorAll("button")) otro.setAttribute("aria-pressed", "false");
       b.setAttribute("aria-pressed", "true");
     };
   }
 }
 
-function abrirPanel(f: Ficha, rankPos: number, q: string) {
+function abrirPanel(f: Ficha, q: string, rankPos?: number) {
   panel.style.display = "block";
   panel.innerHTML = `
     <h3>${f.titulo} — ${f.artista}</h3>
@@ -380,7 +380,7 @@ escena.querySelector<HTMLButtonElement>(".sorprendeme")!.onclick = async () => {
   lista.replaceChildren();
   opacidad((slug) => (slug === ficha.slug ? 1 : 0.1));
   viajarA(ficha.slug);
-  abrirPanel(ficha, -1, "sorpréndeme");
+  abrirPanel(ficha, "sorpréndeme");
   estado.textContent = `sorpréndeme: ${ficha.titulo} — ${ficha.artista}`;
 };
 
@@ -426,7 +426,7 @@ async function buscar() {
         <div class="fb"><button type="button" data-a="clavo">clavo</button><button type="button" data-a="no-encaja">no me encaja</button></div>`;
       div.querySelector<HTMLButtonElement>(".titulo")!.onclick = () => {
         viajarA(r.slug);
-        abrirPanel(r, i, q);
+        abrirPanel(r, q, i);
       };
       cablearFeedback(div.querySelector<HTMLElement>(".fb")!, r, i, q);
       return div;

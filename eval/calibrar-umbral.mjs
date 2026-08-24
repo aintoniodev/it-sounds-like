@@ -8,6 +8,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { suite } from "./suite.mjs";
+import { coseno } from "../functions/rank.mjs";
 
 const CATALOGO = join(import.meta.dirname, "..", "catalogo");
 const BASE = `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/@cf/baai/bge-m3`;
@@ -45,18 +46,6 @@ const fichas = readdirSync(CATALOGO)
 const pasajes = await embed(fichas.map((f) => f.body));
 const reales = await embed(suite.map((s) => s.q));
 const fuera = await embed(FUERA_DE_TEMA);
-
-const coseno = (a, b) => {
-  let dot = 0,
-    na = 0,
-    nb = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    na += a[i] * a[i];
-    nb += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(na) * Math.sqrt(nb));
-};
 
 const top1 = (q) => Math.max(...pasajes.map((v) => coseno(v, q)));
 const scores = (vecs) => vecs.map(top1).sort((a, b) => b - a);

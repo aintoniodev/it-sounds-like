@@ -31,7 +31,7 @@ export function pasaFiltros(ficha, filtros) {
   return true;
 }
 
-function coseno(a, b) {
+export function coseno(a, b) {
   let dot = 0;
   let na = 0;
   let nb = 0;
