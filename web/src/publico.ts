@@ -3,8 +3,8 @@
 // bge-m3 sobre el índice que el CI genera contra el mismo runtime. El
 // catálogo ligero (sin vectores) pinta la sala; el rank vive en el edge.
 // Referencia visual: el prototipo validado del ticket 06 (mapa de
-// publicación). Los botones de feedback son el stub del prototipo: el
-// cableado al Worker + D1 llega con su ticket.
+// publicación). El feedback (clavo / no me encaja) viaja a /api/feedback:
+// solo la tupla, sin IP ni cookies (el pie lo cuenta en cinco líneas).
 import * as THREE from "three";
 
 type FichaLigera = { slug: string; titulo: string; artista: string; cover: string | null };
@@ -104,6 +104,13 @@ a { color: inherit; }
 .panel .meta { opacity: .55; font-size: 12px; margin-bottom: 12px; }
 .panel .cuerpo { white-space: pre-line; opacity: .9; }
 .panel a { color: #e8b17d; }
+
+.pie {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1;
+  width: min(560px, 92vw); text-align: center;
+  font-size: 11px; line-height: 1.7; opacity: .45; pointer-events: none;
+}
+@media (max-width: 900px) { .lista { bottom: 104px; } }
 `;
 
 function texturaFallback(titulo: string, artista: string): THREE.Texture {
@@ -164,19 +171,36 @@ function calcularDimensiones(fichas: Ficha[]): DimInfo {
   };
 }
 
-// stub del Worker de feedback: en el build real será un POST a /api/feedback
-// con {query, ficha, acción, ts, rank_pre_boost, visitante}
+// visitante: hash aleatorio en localStorage, la única identidad que existe.
+// Lo genera el navegador, no el servidor; borrarlo es borrar la identidad.
+function visitante(): string {
+  try {
+    let v = localStorage.getItem("visitante");
+    if (!v) {
+      v = crypto.randomUUID();
+      localStorage.setItem("visitante", v);
+    }
+    return v;
+  } catch {
+    return "sin-localStorage";
+  }
+}
+
+// el evento de feedback: la tupla exacta que D1 guarda, nada más. Si el
+// POST falla, se pierde en silencio — marcar no puede romper la búsqueda
 function feedback(ficha: Ficha, accion: "clavo" | "no-encaja", rank: number | undefined, q: string) {
-  const evento = { query: q, ficha: ficha.slug, accion, ts: Date.now(), rank_pre_boost: rank };
-  let log: unknown[] = [];
-  try {
-    log = JSON.parse(localStorage.getItem("feedback-log") ?? "[]");
-  } catch {}
-  log.push(evento);
-  try {
-    localStorage.setItem("feedback-log", JSON.stringify(log));
-  } catch {}
-  console.info("feedback (stub, irá a Worker + D1):", evento);
+  fetch("/api/feedback", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      query: q,
+      ficha: ficha.slug,
+      accion,
+      ts: Date.now(),
+      rank_pre_boost: rank,
+      visitante: visitante(),
+    }),
+  }).catch(() => {});
 }
 
 const app = document.getElementById("app")!;
@@ -198,7 +222,14 @@ escena.innerHTML = `
   <button class="filtros-btn" type="button">filtros</button>
   <div class="filtros"></div>
   <div class="lista"></div>
-  <div class="panel"></div>`;
+  <div class="panel"></div>
+  <footer class="pie">
+    al marcar clavo o no me encaja se guarda la búsqueda, la ficha, la acción, tu puesto en el top y un identificador aleatorio.
+    sin IP, sin cookies, sin user-agent.
+    el identificador vive solo en tu navegador y puedes borrarlo cuando quieras.
+    todo se purga a los 90 días.
+    sin telemetría de terceros: esto es toda la analítica del sitio.
+  </footer>`;
 app.appendChild(escena);
 
 const input = escena.querySelector<HTMLInputElement>("input")!;

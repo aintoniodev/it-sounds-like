@@ -1,0 +1,13 @@
+# Worker aparte para el cron de purge: Pages Functions no soportan
+# scheduled triggers. Mismo D1 que el sitio (binding DB), schedule diaria.
+name = "it-sounds-like-purge"
+main = "index.mjs"
+compatibility_date = "2026-08-24"
+
+[triggers]
+crons = ["0 4 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "it-sounds-like-feedback"
+database_id = "local-dev"

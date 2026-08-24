@@ -5,3 +5,8 @@ dist/
 .vite/
 .wrangler/
 dist-public/
+.local-state/
+.pages-dev.log
+.cron-dev.log
+.pages-dev.pid
+.cron-dev.pid
