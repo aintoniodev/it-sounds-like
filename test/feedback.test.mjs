@@ -2,7 +2,7 @@
 // reglas de validez, sin HTTP ni base de datos.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validarEvento, ACCIONES, RETENCION_MS } from "../functions/feedback.mjs";
+import { validarEvento, ACCIONES, CAMPOS, RETENCION_MS } from "../functions/feedback.mjs";
 
 const base = {
   query: "algo tranquilo para cerrar la noche",
@@ -50,5 +50,13 @@ test("rank_pre_boost es opcional (sorpréndeme no tiene rank)", () => {
 
 test("ACCIONES es exactamente el par de botones y la retención son 90 días", () => {
   assert.deepEqual([...ACCIONES].sort(), ["clavo", "no-encaja"]);
+  assert.deepEqual(Object.keys(validarEvento(base)), CAMPOS);
   assert.equal(RETENCION_MS, 90 * 24 * 60 * 60 * 1000);
+});
+
+test("ts fuera de rango no entra: futuro lejano o época en segundos", () => {
+  const futuro = { ...base, ts: Date.now() + 30 * 24 * 60 * 60 * 1000 };
+  const enSegundos = { ...base, ts: Math.floor(Date.now() / 1000) };
+  assert.equal(validarEvento(futuro), null);
+  assert.equal(validarEvento(enSegundos), null);
 });

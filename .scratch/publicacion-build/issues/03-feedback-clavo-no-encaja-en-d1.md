@@ -11,3 +11,7 @@
 - [ ] El cron de purge elimina filas de más de 90 días (verificado una vez con wrangler local)
 - [ ] Las cinco líneas de privacidad aparecen en el pie del sitio público
 - [ ] Ningún evento guarda IP, cookies ni user-agent
+
+## Comments
+
+**2026-08-24 (agente):** código completo y verificado end-to-end con D1 local (`--persist-to` compartido entre pages dev y el worker de cron): inserts con tupla completa incluido rank_pre_boost (nullable para sorpréndeme), rechazo 400 de malformados/ts-fuera-de-ms-epoch/campos extra, y purge vía `__scheduled` que borra la fila de 91 días y conserva las frescas. El pie de cinco líneas está en producción desde e82cc94. **Pendiente un paso humano** (scripts/wizard-d1.md): añadir `D1 · Edit` y `Workers Scripts · Edit` al token de Cloudflare para crear la base real, aplicar el esquema remoto, desplegar el cron y commitear los wrangler.toml con el id real. Hasta entonces, el feedback en producción es silenciosamente no-op (el POST llega a una función sin binding). Criterios 1–2 y 4–5 verificados localmente; el 3 verificado con wrangler local tal como pide la letra. Se cierra cuando la persistencia esté en producción.

@@ -31,3 +31,7 @@ _Avoid_: musicprint, huella musical, perfil
 **Dimensión**:
 Clave de ficha con valor numérico o de pequeño vocabulario (energia, momento_del_dia, nivel_de_fiesta). No se embedea: filtra el retrieve y estructura el soundprint.
 _Avoid_: metadato, tag, atributo
+
+**Visitante**:
+Quien busca en el sitio público. Su única identidad es un hash aleatorio en su propio navegador; el servidor no le conoce nada más.
+_Avoid_: usuario, anónimo, sesión

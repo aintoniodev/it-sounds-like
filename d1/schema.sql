@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS feedback (
   query TEXT NOT NULL,
   ficha TEXT NOT NULL,
-  accion TEXT NOT NULL,
+  accion TEXT NOT NULL CHECK (accion IN ('clavo', 'no-encaja')),
   ts INTEGER NOT NULL,
   rank_pre_boost INTEGER,
   visitante TEXT NOT NULL

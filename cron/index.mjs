@@ -7,7 +7,9 @@ import { RETENCION_MS } from "../functions/feedback.mjs";
 export default {
   async scheduled(_event, env, _ctx) {
     const corte = Date.now() - RETENCION_MS;
-    const r = await env.DB.prepare("DELETE FROM feedback WHERE ts < ?").bind(corte).run();
-    console.log(`purge: ${r.meta.changes} filas anteriores a ${new Date(corte).toISOString()}`);
+    const borradas = await env.DB.prepare("DELETE FROM feedback WHERE ts < ?").bind(corte).run();
+    console.log(
+      `purge: ${borradas.meta.changes} filas anteriores a ${new Date(corte).toISOString()}`,
+    );
   },
 };

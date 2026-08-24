@@ -173,6 +173,8 @@ function calcularDimensiones(fichas: Ficha[]): DimInfo {
 
 // visitante: hash aleatorio en localStorage, la única identidad que existe.
 // Lo genera el navegador, no el servidor; borrarlo es borrar la identidad.
+// Sin localStorage (bloqueado), identidad nueva por visita: nadie colapsa
+// en un id compartido.
 function visitante(): string {
   try {
     let v = localStorage.getItem("visitante");
@@ -182,7 +184,7 @@ function visitante(): string {
     }
     return v;
   } catch {
-    return "sin-localStorage";
+    return crypto.randomUUID();
   }
 }
 
