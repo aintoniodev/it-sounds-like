@@ -8,6 +8,7 @@
 // 401 genérico de functions/auth.mjs — mismo cuerpo para ausente y erróneo.
 import { autorizado, noAutorizado } from "../auth.mjs";
 import { errorDeFicha, slugDe } from "../ficha.mjs";
+import { MODELO } from "../rank.mjs";
 import { leerCuerpo } from "./cuerpo.mjs";
 import { cargarIndice } from "./indice.mjs";
 
@@ -48,8 +49,17 @@ export async function onRequestPost(context) {
   }
 
   try {
+    // el embed de la fusión (ticket 02): bge-m3 en el edge, el mismo runtime
+    // contra el que CI hornea el índice (~1 ficha/día: dentro del margen 61×
+    // del README). Sin embedding la ficha guarda igual y espera a la
+    // adopción del 03 para volverse buscable
+    let vector = null;
+    try {
+      const { data } = await env.AI.run(MODELO, { text: [ficha.cuerpo ?? ""] });
+      vector = JSON.stringify(data[0]);
+    } catch {}
     await env.DB.prepare(
-      "INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, editada_en) VALUES (?, ?, ?, ?, ?, ?, ?, 'publicada', ?)",
+      "INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, editada_en, vector) VALUES (?, ?, ?, ?, ?, ?, ?, 'publicada', ?, ?)",
     )
       .bind(
         slug,
@@ -60,6 +70,7 @@ export async function onRequestPost(context) {
         ficha.claves ? JSON.stringify(ficha.claves) : null,
         ficha.cuerpo ?? "",
         Date.now(),
+        vector,
       )
       .run();
   } catch (e) {

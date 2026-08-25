@@ -20,7 +20,9 @@ CREATE INDEX IF NOT EXISTS feedback_ficha_idx ON feedback (ficha);
 -- publicadas a catalogo/ y retira la fila. El ciclo de vida (estados, sombra
 -- de edición, borrado pedido, gana la edición más reciente) es el reducer
 -- validado en la rama prototype/fichas-desde-la-web. claves es JSON
--- [{clave, valor}]: las dimensiones de la ficha.
+-- [{clave, valor}]: las dimensiones de la ficha. vector (ticket 02) es el
+-- embedding bge-m3 del cuerpo en el edge, para que la búsqueda fusione la
+-- ficha sin esperar al deploy.
 CREATE TABLE IF NOT EXISTS fichas_web (
   slug TEXT PRIMARY KEY,
   titulo TEXT NOT NULL,
@@ -31,5 +33,6 @@ CREATE TABLE IF NOT EXISTS fichas_web (
   cuerpo TEXT NOT NULL,
   estado TEXT NOT NULL DEFAULT 'publicada' CHECK (estado IN ('borrador', 'publicada')),
   editada_en INTEGER NOT NULL,
-  borrado_pedido INTEGER NOT NULL DEFAULT 0
+  borrado_pedido INTEGER NOT NULL DEFAULT 0,
+  vector TEXT
 );

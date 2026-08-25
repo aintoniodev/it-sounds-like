@@ -91,6 +91,8 @@ app.innerHTML = `
         <input id="artista" autocomplete="off" />
         <label for="fecha">fecha</label>
         <input id="fecha" type="date" />
+        <label for="spotify">link de Spotify (opcional)</label>
+        <input id="spotify" type="url" inputmode="url" placeholder="https://open.spotify.com/track/…" />
         <label for="cuerpo">la ficha</label>
         <textarea id="cuerpo" placeholder="## Por qué esta canción&#10;&#10;## Para cuándo&#10;&#10;## Escucha"></textarea>
         <button type="submit">guardar ficha</button>
@@ -115,7 +117,7 @@ const formFicha = app.querySelector<HTMLFormElement>(".ficha")!;
 const avisoFicha = formFicha.querySelector<HTMLElement>(".aviso")!;
 const ulFichas = app.querySelector<HTMLElement>(".fichas")!;
 const vacio = app.querySelector<HTMLElement>(".vacio")!;
-const [titulo, artista, fecha, cuerpo] = ["titulo", "artista", "fecha", "cuerpo"].map(
+const [titulo, artista, fecha, spotify, cuerpo] = ["titulo", "artista", "fecha", "spotify", "cuerpo"].map(
   (id) => app.querySelector<HTMLInputElement>(`#${id}`)!,
 );
 
@@ -229,6 +231,7 @@ formFicha.onsubmit = async (e) => {
     titulo: titulo.value.trim(),
     artista: artista.value.trim(),
     fecha: fecha.value,
+    spotify: spotify.value.trim(), // vacío → null en la fila: link opcional de verdad
     cuerpo: cuerpo.value,
   };
   // el mismo módulo compartido del endpoint: el error se ve aquí, no tras la ida
