@@ -28,6 +28,7 @@ type FichaWeb = {
   estado: "borrador" | "publicada";
   borrado_pedido: number;
   editada_en: number;
+  publicacion: { estado: "publicado" | "pendiente" | "error"; detalle: string | null } | null;
 };
 type ResumenCatalogo = { slug: string; titulo: string; artista: string; fecha: string };
 type EntradaIndice = FichaWeb & { body: string; dims: Record<string, string> };
@@ -84,6 +85,9 @@ button:disabled { opacity: .4; cursor: default; }
 .estado.borrador { border-color: #e8b17d; color: #e8b17d; }
 .estado.publicada { border-color: #7fc79c; color: #7fc79c; }
 .estado.borrado-pedido { border-color: #b3541e; color: #b3541e; }
+.estado.ig-publicado { border-color: #7fc79c; color: #7fc79c; }
+.estado.ig-pendiente { border-color: #e8b17d; color: #e8b17d; }
+.estado.ig-error { border-color: #b3541e; color: #b3541e; }
 .acciones { display: flex; gap: 6px; }
 .acciones button { margin: 0; padding: 3px 10px; font-size: 12px; }
 .claves { display: grid; gap: 6px; }
@@ -121,6 +125,8 @@ app.innerHTML = `
         <input id="fecha" type="date" />
         <label for="spotify">link de Spotify (opcional)</label>
         <input id="spotify" type="url" inputmode="url" placeholder="https://open.spotify.com/track/…" />
+        <label for="imagen">imagen para Instagram (opcional — si no, la portada de Spotify)</label>
+        <input id="imagen" type="url" inputmode="url" placeholder="https://…/portada.jpg" />
         <label for="cuerpo">la ficha</label>
         <textarea id="cuerpo"></textarea>
         <label>claves libres (las dimensiones: energia, momento_del_dia…)</label>
@@ -159,9 +165,14 @@ const contador = app.querySelector<HTMLElement>(".contador")!;
 const vacio = app.querySelector<HTMLElement>(".vacio")!;
 const cancelar = formFicha.querySelector<HTMLButtonElement>(".cancelar")!;
 const divClaves = formFicha.querySelector<HTMLElement>(".claves")!;
-const [titulo, artista, fecha, spotify, cuerpo] = ["titulo", "artista", "fecha", "spotify", "cuerpo"].map(
-  (id) => app.querySelector<HTMLInputElement>(`#${id}`)!,
-);
+const [titulo, artista, fecha, spotify, imagen, cuerpo] = [
+  "titulo",
+  "artista",
+  "fecha",
+  "spotify",
+  "imagen",
+  "cuerpo",
+].map((id) => app.querySelector<HTMLInputElement>(`#${id}`)!);
 
 // la sesión es la cookie __Host- que el servidor entrega al abrir: el token
 // no se persiste ni vuelve a viajar (ticket 06)
@@ -310,6 +321,31 @@ async function pintarSesion(avisa401 = false): Promise<boolean> {
       li.querySelector<HTMLElement>(".titulo")!.textContent = `${f.titulo} — ${f.artista}`;
       li.querySelector<HTMLElement>(".meta")!.textContent = f.fecha;
       const acciones = li.querySelector<HTMLElement>(".acciones")!;
+      if (f.publicacion) {
+        const ig = document.createElement("span");
+        ig.className = `estado ig-${f.publicacion.estado}`;
+        ig.textContent =
+          f.publicacion.estado === "publicado"
+            ? "IG"
+            : f.publicacion.estado === "pendiente"
+              ? "IG pendiente"
+              : "IG error";
+        ig.title = f.publicacion.detalle ?? "";
+        li.querySelector<HTMLElement>(".que")!.after(ig);
+        if (f.publicacion.estado !== "publicado")
+          acciones.appendChild(
+            botonAccion("reintentar IG", async () => {
+              const r2 = await api("/api/captura/republicar", avisoFicha, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ slug: f.slug }),
+              });
+              if (r2?.ok) avisa(avisoFicha, `publicado en Instagram: ${f.slug}`, "ok");
+              else if (r2) avisa(avisoFicha, await r2.text(), "err");
+              await pintarSesion();
+            }),
+          );
+      }
       if (!f.borrado_pedido) {
         if (f.estado === "borrador")
           acciones.appendChild(
@@ -407,11 +443,12 @@ formFicha.onsubmit = async (e) => {
   e.preventDefault();
   avisoFicha.style.display = "none";
   const estado = (e.submitter as HTMLButtonElement | null)?.value === "borrador" ? "borrador" : "publicada";
-  const ficha: FichaEntrante & { estado: string } = {
+  const ficha: FichaEntrante & { estado: string; imagen?: string } = {
     titulo: titulo.value.trim(),
     artista: artista.value.trim(),
     fecha: fecha.value,
     spotify: spotify.value.trim(), // vacío → null en la fila: link opcional de verdad
+    imagen: imagen.value.trim() || undefined, // gana sobre la portada de Spotify
     cuerpo: cuerpo.value,
     estado,
     claves: [...divClaves.querySelectorAll<HTMLDivElement>(".clave")].map((f) => {

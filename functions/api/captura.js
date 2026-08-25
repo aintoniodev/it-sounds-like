@@ -9,6 +9,7 @@
 import { puerta } from "../auth.mjs";
 import { errorDeFicha, slugDe } from "../ficha.mjs";
 import { MODELO } from "../rank.mjs";
+import { publicarFicha } from "../publicar.mjs";
 import { leerCuerpo } from "./cuerpo.mjs";
 import { cargarIndice } from "./indice.mjs";
 
@@ -18,6 +19,7 @@ export function errorDeTipos(ficha) {
   if (ficha.titulo !== undefined && typeof ficha.titulo !== "string") return "titulo debe ser texto";
   if (ficha.artista !== undefined && typeof ficha.artista !== "string") return "artista debe ser texto";
   if (ficha.spotify !== undefined && typeof ficha.spotify !== "string") return "spotify debe ser un link opcional";
+  if (ficha.imagen !== undefined && typeof ficha.imagen !== "string") return "imagen debe ser un link opcional";
   if (ficha.cuerpo !== undefined && typeof ficha.cuerpo !== "string") return "cuerpo debe ser texto";
   if (ficha.estado !== undefined && !["borrador", "publicada"].includes(ficha.estado))
     return "estado debe ser borrador o publicada";
@@ -36,7 +38,6 @@ export async function onRequestPost(context) {
   if (fallo) return fallo;
   const { cuerpo: ficha, error } = await leerCuerpo(request);
   if (error) return error;
-
   const err = errorDeFicha(ficha) ?? errorDeTipos(ficha);
   if (err) return new Response(err, { status: 400 });
 
@@ -88,6 +89,10 @@ export async function onRequestPost(context) {
       return new Response(`ya existe una ficha con ese nombre: ${slug}`, { status: 409 });
     throw e;
   }
+  // el post de Instagram (ticket 11) va en waitUntil: el 201 no espera a
+  // Graph y ningún percance suyo puede con la ficha — el desenlace queda en
+  // publicaciones. Solo publicadas: el borrador no dispara nada.
+  if (ficha.estado !== "borrador") context.waitUntil(publicarFicha(env, ficha, slug));
   return Response.json({ ok: true, slug }, { status: 201 });
 }
 
@@ -195,5 +200,15 @@ export async function onRequestGet(context) {
       .filter((e) => !sombras.has(e.slug))
       .map(({ slug, titulo, artista, fecha }) => ({ slug, titulo, artista, fecha }));
   } catch {}
-  return Response.json({ fichas: results, catalogo });
+  // el desenlace de Instagram por ficha (ticket 11): badge accionable en el
+  // listado; sin tabla (o sin intentar nunca) no hay campo
+  let ig = {};
+  try {
+    const { results: pubs } = await env.DB.prepare(
+      "SELECT slug, estado, detalle FROM publicaciones",
+    ).all();
+    ig = Object.fromEntries(pubs.map((p) => [p.slug, { estado: p.estado, detalle: p.detalle }]));
+  } catch {}
+  const fichas = results.map((r) => ({ ...r, publicacion: ig[r.slug] ?? null }));
+  return Response.json({ fichas, catalogo });
 }

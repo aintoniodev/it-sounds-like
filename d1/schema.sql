@@ -45,3 +45,16 @@ CREATE TABLE IF NOT EXISTS intentos_login (
   fallos INTEGER NOT NULL,
   ventana_desde INTEGER NOT NULL
 );
+
+-- Publicaciones en Instagram disparadas al guardar (ticket 11 de
+-- captura-web): estado del post por ficha, con el detalle accionable (url
+-- del post o el error de Graph — el token caduca y se renueva a mano) y la
+-- imagen+caption exactos usados, para reintentar sin recomponer nada.
+CREATE TABLE IF NOT EXISTS publicaciones (
+  slug TEXT PRIMARY KEY,
+  estado TEXT NOT NULL CHECK (estado IN ('publicado', 'pendiente', 'error')),
+  detalle TEXT,
+  imagen TEXT,
+  caption TEXT,
+  ts INTEGER NOT NULL
+);
