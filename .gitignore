@@ -10,3 +10,4 @@ dist-public/
 .cron-dev.log
 .pages-dev.pid
 .cron-dev.pid
+.dev.vars

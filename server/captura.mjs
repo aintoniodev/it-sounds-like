@@ -1,29 +1,16 @@
 // Captura del autor: valida la ficha y la escribe como markdown en la
 // carpeta del catálogo — la única fuente de verdad, nunca una BBDD propia.
-// El watcher la indexa al instante.
+// El watcher la indexa al instante. La validación y el slug viven en el
+// módulo compartido functions/ficha.mjs (que esto no arrastre embeddings).
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { nucleoCompleto } from "./servicio.mjs";
-
-const FECHA = /^\d{4}-\d{2}-\d{2}$/;
-
-// nombre de fichero: AAAA-MM-DD-artista-cancion, minúsculas, sin acentos
-export function slugDe(ficha) {
-  const norm = (s) =>
-    s
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-  return `${ficha.fecha}-${norm(ficha.artista)}-${norm(ficha.titulo)}`;
-}
+import { errorDeFicha, slugDe } from "../functions/ficha.mjs";
 
 const quoted = (v) => `"${String(v).replace(/"/g, "")}"`;
 
 export async function crearFicha({ carpeta, ficha }) {
-  if (!nucleoCompleto(ficha)) throw new Error("falta el núcleo: titulo, artista y fecha");
-  if (!FECHA.test(ficha.fecha)) throw new Error("la fecha debe ir como AAAA-MM-DD");
+  const error = errorDeFicha(ficha);
+  if (error) throw new Error(error);
 
   const slug = slugDe(ficha);
   const ruta = join(carpeta, `${slug}.md`);

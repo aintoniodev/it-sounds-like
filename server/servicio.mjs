@@ -5,9 +5,11 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 import { pipeline } from "@huggingface/transformers";
-// el núcleo compartido (filtros, dimensiones, coseno) vive una sola vez en
-// functions/rank.mjs: v1, edge y cliente consumen el mismo módulo (ticket 08)
+// los núcleos compartidos viven una sola vez bajo functions/: rank (filtros,
+// dimensiones, coseno — ticket 08) y ficha (núcleo obligatorio, fecha, slug
+// — ticket captura-web 01). v1, edge y cliente consumen los mismos módulos.
 import { coseno, pasaFiltros, calcularDimensiones } from "../functions/rank.mjs";
+import { nucleoCompleto } from "../functions/ficha.mjs";
 
 export { pasaFiltros, calcularDimensiones };
 
@@ -29,11 +31,6 @@ async function embedReal() {
     pipe = await pipeline("feature-extraction", MODELO);
   }
   return async (texts) => (await pipe(texts, { pooling: "mean", normalize: true })).tolist();
-}
-
-// el núcleo obligatorio de una ficha; lo validan el índice y la captura
-export function nucleoCompleto(ficha) {
-  return Boolean(ficha.titulo && ficha.artista && ficha.fecha);
 }
 
 function parseFicha(slug, raw) {

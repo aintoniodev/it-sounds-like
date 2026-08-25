@@ -14,3 +14,22 @@ CREATE TABLE IF NOT EXISTS feedback (
 );
 CREATE INDEX IF NOT EXISTS feedback_ts_idx ON feedback (ts);
 CREATE INDEX IF NOT EXISTS feedback_ficha_idx ON feedback (ficha);
+
+-- Fichas del autor escritas desde la web pública (esfuerzo captura-web). El
+-- D1 es bandeja de entrada, no fuente de verdad: cada push del CI adopta las
+-- publicadas a catalogo/ y retira la fila. El ciclo de vida (estados, sombra
+-- de edición, borrado pedido, gana la edición más reciente) es el reducer
+-- validado en la rama prototype/fichas-desde-la-web. claves es JSON
+-- [{clave, valor}]: las dimensiones de la ficha.
+CREATE TABLE IF NOT EXISTS fichas_web (
+  slug TEXT PRIMARY KEY,
+  titulo TEXT NOT NULL,
+  artista TEXT NOT NULL,
+  fecha TEXT NOT NULL,
+  spotify TEXT,
+  claves TEXT,
+  cuerpo TEXT NOT NULL,
+  estado TEXT NOT NULL DEFAULT 'publicada' CHECK (estado IN ('borrador', 'publicada')),
+  editada_en INTEGER NOT NULL,
+  borrado_pedido INTEGER NOT NULL DEFAULT 0
+);
