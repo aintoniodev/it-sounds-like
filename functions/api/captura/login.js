@@ -1,10 +1,18 @@
 // POST /api/captura/login — el token se presenta UNA vez aquí (ticket 06):
 // Turnstile delante (si el sitio lo tiene configurado), lockout por IP y,
 // si todo pasa, cookie __Host- HttpOnly que carga con las siguientes
-// peticiones — el token original no vuelve a viajar.
-import { tokenValido, cookieDeSesion, puerta, noAutorizado } from "../../auth.mjs";
-
-const ipDe = (request) => request.headers.get("cf-connecting-ip") ?? "local";
+// peticiones — el token original no vuelve a viajar. El contador y la
+// ventana viven en functions/auth.mjs junto al resto de la puerta.
+import {
+  tokenValido,
+  cookieDeSesion,
+  noAutorizado,
+  puerta,
+  ipDe,
+  fallosDe,
+  contarFallo,
+  limpiarIntentos,
+} from "../../auth.mjs";
 
 async function turnstilePasa(env, respuesta, ip) {
   if (!env.TURNSTILE_SECRET) return true; // sin widget configurado: solo el token
@@ -18,17 +26,6 @@ async function turnstilePasa(env, respuesta, ip) {
     return (await r.json()).success === true;
   } catch {
     return false;
-  }
-}
-
-// el mismo contador del lockout, sin importar por dónde se pruebe el token
-async function fallosDe(env, ip) {
-  try {
-    const fila = await env.DB.prepare("SELECT fallos, ventana_desde FROM intentos_login WHERE ip = ?").bind(ip).first();
-    if (!fila) return 0;
-    return Date.now() - fila.ventana_desde > 10 * 60 * 1000 ? 0 : fila.fallos;
-  } catch {
-    return 0;
   }
 }
 
@@ -57,24 +54,13 @@ export async function onRequestPost(context) {
   const presentado = typeof cuerpo?.token === "string" ? cuerpo.token : "";
   const comoBearer = new Request("https://login.interno", { headers: { authorization: `Bearer ${presentado}` } });
   if (presentado && (await tokenValido(comoBearer, env))) {
-    try {
-      await env.DB.prepare("DELETE FROM intentos_login WHERE ip = ?").bind(ip).run();
-    } catch {}
+    await limpiarIntentos(env, ip);
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "content-type": "application/json; charset=utf-8", "set-cookie": await cookieDeSesion(env) },
     });
   }
-  try {
-    await env.DB.prepare(
-      `INSERT INTO intentos_login (ip, fallos, ventana_desde) VALUES (?, 1, ?)
-       ON CONFLICT(ip) DO UPDATE SET
-         fallos = CASE WHEN ? - ventana_desde > 600000 THEN 1 ELSE fallos + 1 END,
-         ventana_desde = CASE WHEN ? - ventana_desde > 600000 THEN ? ELSE ventana_desde END`,
-    )
-      .bind(ip, Date.now(), Date.now(), Date.now(), Date.now())
-      .run();
-  } catch {}
+  await contarFallo(env, ip);
   return noAutorizado();
 }
 

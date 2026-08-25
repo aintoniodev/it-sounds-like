@@ -8,8 +8,8 @@
 // 401 genérico de functions/auth.mjs — mismo cuerpo para ausente y erróneo.
 import { puerta } from "../auth.mjs";
 import { errorDeFicha, slugDe } from "../ficha.mjs";
-import { MODELO } from "../rank.mjs";
 import { publicarFicha } from "../publicar.mjs";
+import { embedTexto } from "./embed.mjs";
 import { leerCuerpo } from "./cuerpo.mjs";
 import { cargarIndice } from "./indice.mjs";
 
@@ -58,14 +58,7 @@ export async function onRequestPost(context) {
     // del README). Solo lo publicada: el borrador es invisible para la
     // búsqueda y se embedeará al publicarse (o al adoptarlo el 03). Sin
     // embedding la ficha guarda igual y espera a la adopción para buscar.
-    const borrador = ficha.estado === "borrador";
-    let vector = null;
-    if (!borrador) {
-      try {
-        const { data } = await env.AI.run(MODELO, { text: [ficha.cuerpo ?? ""] });
-        vector = JSON.stringify(data[0]);
-      } catch {}
-    }
+    const vector = ficha.estado === "borrador" ? null : await embedTexto(env, ficha.cuerpo);
     await env.DB.prepare(
       "INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, imagen, claves, cuerpo, estado, editada_en, vector) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
@@ -119,13 +112,7 @@ export async function onRequestPut(context) {
     if (!enIndice) return new Response(`no hay ficha con ese nombre: ${slug}`, { status: 404 });
   }
   const estado = ficha.estado ?? existente?.estado ?? "publicada";
-  let vector = null;
-  if (estado === "publicada") {
-    try {
-      const { data } = await env.AI.run(MODELO, { text: [ficha.cuerpo ?? ""] });
-      vector = JSON.stringify(data[0]);
-    } catch {}
-  }
+  const vector = estado === "publicada" ? await embedTexto(env, ficha.cuerpo) : null;
   await env.DB.prepare(
     `INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, imagen, claves, cuerpo, estado, editada_en, vector, borrado_pedido)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
@@ -161,7 +148,7 @@ export async function onRequestDelete(context) {
   const slug = new URL(request.url).searchParams.get("slug")?.trim();
   if (!slug) return new Response("falta el slug", { status: 400 });
 
-  const fila = await env.DB.prepare("SELECT borrado_pedido FROM fichas_web WHERE slug = ?").bind(slug).first();
+  const fila = await env.DB.prepare("SELECT borrado_pedido, adoptada_en FROM fichas_web WHERE slug = ?").bind(slug).first();
   if (!fila) {
     const entrada = (await cargarIndice(request)).find((e) => e.slug === slug);
     if (!entrada) return new Response(`no hay ficha con ese nombre: ${slug}`, { status: 404 });
@@ -174,8 +161,10 @@ export async function onRequestDelete(context) {
       .run();
     return Response.json({ ok: true, slug, oculta: true });
   }
-  const enIndice = (await cargarIndice(request)).some((e) => e.slug === slug);
-  if (enIndice && !fila.borrado_pedido) {
+  // ¿es del catálogo? el índice desplegado puede ir por detrás del último
+  // commit del sync: la memoria de adopción de la propia fila es la verdad
+  const enCatalogo = fila.adoptada_en || (await cargarIndice(request)).some((e) => e.slug === slug);
+  if (enCatalogo && !fila.borrado_pedido) {
     await env.DB.prepare("UPDATE fichas_web SET borrado_pedido = 1, editada_en = ? WHERE slug = ?")
       .bind(Date.now(), slug)
       .run();

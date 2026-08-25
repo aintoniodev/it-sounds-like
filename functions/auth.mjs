@@ -36,8 +36,52 @@ async function firma(secreto, dato) {
   return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function ipDe(request) {
-  return request.headers.get("cf-connecting-ip") ?? "local";
+// ── lockout: contador por IP en D1, tolerante a que la base no responda ──
+// (una caída del contador no abre la puerta: el token sigue haciendo su trabajo)
+export const ipDe = (request) => request.headers.get("cf-connecting-ip") ?? "local";
+
+export async function fallosDe(env, ip) {
+  try {
+    const fila = await env.DB.prepare("SELECT fallos, ventana_desde FROM intentos_login WHERE ip = ?").bind(ip).first();
+    if (!fila) return 0;
+    return Date.now() - fila.ventana_desde > VENTANA_MS ? 0 : fila.fallos;
+  } catch {
+    return 0;
+  }
+}
+
+export async function contarFallo(env, ip) {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO intentos_login (ip, fallos, ventana_desde) VALUES (?, 1, ?)
+       ON CONFLICT(ip) DO UPDATE SET
+         fallos = CASE WHEN ? - ventana_desde > ${VENTANA_MS} THEN 1 ELSE fallos + 1 END,
+         ventana_desde = CASE WHEN ? - ventana_desde > ${VENTANA_MS} THEN ? ELSE ventana_desde END`,
+    )
+      .bind(ip, Date.now(), Date.now(), Date.now(), Date.now())
+      .run();
+  } catch {}
+}
+
+export async function limpiarIntentos(env, ip) {
+  try {
+    await env.DB.prepare("DELETE FROM intentos_login WHERE ip = ?").bind(ip).run();
+  } catch {}
+}
+
+// la puerta entera para los endpoints de captura: bloqueada → 429 (sin
+// escribir en D1: protege el cupo); autorizada → null y a correr; si no,
+// cuenta el fallo y devuelve el 401 genérico
+export async function puerta(request, env) {
+  const ip = ipDe(request);
+  if ((await fallosDe(env, ip)) >= BLOQUEO_TRAS)
+    return new Response("demasiados intentos; espera unos minutos", { status: 429 });
+  if (await autorizado(request, env)) {
+    await limpiarIntentos(env, ip);
+    return null;
+  }
+  await contarFallo(env, ip);
+  return noAutorizado();
 }
 
 // el Bearer de siempre: true si es el token vigente (o el anterior, en
@@ -78,52 +122,6 @@ export async function cookieDeSesion(env, ahora = Date.now()) {
   const exp = ahora + SESION_MS;
   const mac = await firma(env.AUTH_TOKEN, `sesion.${exp}`);
   return `__Host-sesion=${exp}.${mac}; Max-Age=${SESION_MS / 1000}; Path=/; Secure; HttpOnly; SameSite=Strict`;
-}
-
-// ── lockout: contador por IP en D1, tolerante a que la base no responda ──
-// (una caída del contador no abre la puerta: el token sigue haciendo su trabajo)
-async function fallosDe(env, ip) {
-  try {
-    const fila = await env.DB.prepare("SELECT fallos, ventana_desde FROM intentos_login WHERE ip = ?").bind(ip).first();
-    if (!fila) return 0;
-    return Date.now() - fila.ventana_desde > VENTANA_MS ? 0 : fila.fallos;
-  } catch {
-    return 0;
-  }
-}
-
-async function contarFallo(env, ip) {
-  try {
-    await env.DB.prepare(
-      `INSERT INTO intentos_login (ip, fallos, ventana_desde) VALUES (?, 1, ?)
-       ON CONFLICT(ip) DO UPDATE SET
-         fallos = CASE WHEN ? - ventana_desde > ${VENTANA_MS} THEN 1 ELSE fallos + 1 END,
-         ventana_desde = CASE WHEN ? - ventana_desde > ${VENTANA_MS} THEN ? ELSE ventana_desde END`,
-    )
-      .bind(ip, Date.now(), Date.now(), Date.now(), Date.now())
-      .run();
-  } catch {}
-}
-
-async function limpiarIntentos(env, ip) {
-  try {
-    await env.DB.prepare("DELETE FROM intentos_login WHERE ip = ?").bind(ip).run();
-  } catch {}
-}
-
-// la puerta entera para los endpoints de captura: bloqueada → 429 (sin
-// escribir en D1: protege el cupo); autorizada → null y a correr; si no,
-// cuenta el fallo y devuelve el 401 genérico
-export async function puerta(request, env) {
-  const ip = ipDe(request);
-  if ((await fallosDe(env, ip)) >= BLOQUEO_TRAS)
-    return new Response("demasiados intentos; espera unos minutos", { status: 429 });
-  if (await autorizado(request, env)) {
-    await limpiarIntentos(env, ip);
-    return null;
-  }
-  await contarFallo(env, ip);
-  return noAutorizado();
 }
 
 export const noAutorizado = () => new Response("no autorizado", { status: 401 });

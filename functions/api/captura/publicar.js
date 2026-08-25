@@ -3,7 +3,7 @@
 // fusión del 02 lo sirve al instante. Solo el autor. Sin embedding (AI
 // caída) publica igual: buscará cuando el sync del 03 lo adopte y hornee.
 import { puerta } from "../../auth.mjs";
-import { MODELO } from "../../rank.mjs";
+import { embedTexto } from "../embed.mjs";
 import { publicarFicha } from "../../publicar.mjs";
 import { leerCuerpo } from "../cuerpo.mjs";
 
@@ -23,11 +23,7 @@ export async function onRequestPost(context) {
     .first();
   if (!fila) return new Response(`no hay borrador pendiente con ese nombre: ${slug}`, { status: 404 });
 
-  let vector = null;
-  try {
-    const { data } = await env.AI.run(MODELO, { text: [fila.cuerpo ?? ""] });
-    vector = JSON.stringify(data[0]);
-  } catch {}
+  const vector = await embedTexto(env, fila.cuerpo);
   await env.DB.prepare("UPDATE fichas_web SET estado = 'publicada', editada_en = ?, vector = ? WHERE slug = ?")
     .bind(Date.now(), vector, slug)
     .run();

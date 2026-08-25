@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS fichas_web (
   cuerpo TEXT NOT NULL,
   estado TEXT NOT NULL DEFAULT 'publicada' CHECK (estado IN ('borrador', 'publicada')),
   editada_en INTEGER NOT NULL,
+  adoptada_en INTEGER,
   borrado_pedido INTEGER NOT NULL DEFAULT 0,
   vector TEXT
 );
