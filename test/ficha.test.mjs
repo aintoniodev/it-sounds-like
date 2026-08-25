@@ -3,7 +3,7 @@
 // cliente — las reglas del slug y el 400 claro viven una sola vez.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nucleoCompleto, errorDeFicha, slugDe } from "../functions/ficha.mjs";
+import { nucleoCompleto, errorDeFicha, slugDe, markdownDe } from "../functions/ficha.mjs";
 
 const valida = { titulo: "Teen Age Riot", artista: "Sonic Youth", fecha: "2026-03-14" };
 
@@ -31,4 +31,42 @@ test("errorDeFicha: mensaje claro para el 400, null cuando todo va bien", () => 
   assert.equal(errorDeFicha({ ...valida, titulo: "" }), "falta el núcleo: titulo, artista y fecha");
   assert.equal(errorDeFicha(undefined), "falta el núcleo: titulo, artista y fecha");
   assert.equal(errorDeFicha({ ...valida, fecha: "14/03/2026" }), "la fecha debe ir como AAAA-MM-DD");
+});
+
+test("markdownDe: el front-matter que escriben igual la captura local y el sync", () => {
+  const md = markdownDe({
+    ...valida,
+    spotify: " https://open.spotify.com/track/abc ",
+    claves: [
+      { clave: "energia", valor: 7 },
+      { clave: "momento_del_dia", valor: "amanecer" },
+      { clave: "vacía", valor: "  " },
+    ],
+    cuerpo: "## Por qué esta canción\n\nRuido azul.\n\n",
+  });
+  assert.equal(
+    md,
+    [
+      "---",
+      'titulo: "Teen Age Riot"',
+      'artista: "Sonic Youth"',
+      "fecha: 2026-03-14",
+      'spotify: "https://open.spotify.com/track/abc"',
+      "energia: 7", // numérica sin comillas, como escribe el autor a mano
+      'momento_del_dia: "amanecer"',
+      "---",
+      "",
+      "## Por qué esta canción",
+      "",
+      "Ruido azul.",
+      "",
+    ].join("\n"),
+  );
+});
+
+test("markdownDe: sin spotify ni claves, el front-matter queda en el núcleo solo", () => {
+  assert.equal(
+    markdownDe(valida),
+    '---\ntitulo: "Teen Age Riot"\nartista: "Sonic Youth"\nfecha: 2026-03-14\n---\n\n\n',
+  );
 });

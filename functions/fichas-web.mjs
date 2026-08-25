@@ -19,3 +19,16 @@ export function entradaDeFila(fila) {
     vector: JSON.parse(fila.vector),
   };
 }
+
+// la fila en dirección adopción (ticket 03): la ficha que markdownDe
+// serializa a catalogo/ cuando el sync del CI la adopta
+export function fichaDeFila(fila) {
+  return {
+    titulo: fila.titulo,
+    artista: fila.artista,
+    fecha: fila.fecha,
+    spotify: fila.spotify ?? undefined,
+    claves: JSON.parse(fila.claves ?? "[]"),
+    cuerpo: fila.cuerpo,
+  };
+}

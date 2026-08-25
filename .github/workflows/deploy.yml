@@ -5,7 +5,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # write para el commit del sync que adopta fichas web a catalogo/ (03);
+  # el resto del pipeline solo lee
+  contents: write
 
 concurrency:
   group: pages-deploy
@@ -15,11 +17,23 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
+      # full: el sync empuja el commit de adopción desde este clon
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      # adopción ANTES de hornear: la ficha web pasa de servirse por la
+      # fusión del edge a servirse por el índice horneado, sin salto — un
+      # deploy nunca se come una ficha en camino (invariante del prototipo)
+      - name: adoptar fichas web al catálogo (sync)
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: node scripts/adoptar-fichas-web.mjs
 
       - name: deps del workspace (vite/three para el cliente público)
         run: npm ci --ignore-scripts

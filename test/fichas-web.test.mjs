@@ -3,7 +3,7 @@
 // — misma tarjeta, mismos filtros, sin distinguir procedencia.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { entradaDeFila } from "../functions/fichas-web.mjs";
+import { entradaDeFila, fichaDeFila } from "../functions/fichas-web.mjs";
 import { rankear, pasaFiltros } from "../functions/rank.mjs";
 
 const fila = {
@@ -52,4 +52,17 @@ test("la ficha web rankea junto al índice: fusión sin distinción de procedenc
   const top = rankear([...indice, web], qvec, {});
   assert.equal(top[0].ficha.slug, web.slug);
   assert.ok(top[0].score > 0.9);
+});
+
+test("fichaDeFila: la fila lista para que markdownDe la serialice al catálogo", () => {
+  const ficha = fichaDeFila({ ...fila, spotify: null, claves: JSON.stringify([{ clave: "energia", valor: 3 }]) });
+  assert.deepEqual(ficha, {
+    titulo: "Cercle",
+    artista: "Bonobo",
+    fecha: "2026-08-25",
+    spotify: undefined,
+    claves: [{ clave: "energia", valor: 3 }],
+    cuerpo: fila.cuerpo,
+  });
+  assert.doesNotThrow(() => fichaDeFila({ ...fila, claves: null }));
 });

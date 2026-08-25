@@ -27,3 +27,25 @@ export function slugDe(ficha) {
       .replace(/^-+|-+$/g, "");
   return `${ficha.fecha}-${norm(ficha.artista)}-${norm(ficha.titulo)}`;
 }
+
+const quoted = (v) => `"${String(v).replace(/"/g, "")}"`;
+
+// la ficha como markdown del catálogo: front-matter con el núcleo citado,
+// spotify opcional y las claves custom (numéricas sin comillas, igual que
+// escribe a mano el autor). Lo serializan igual la captura local y el sync
+// del CI que adopta fichas web — un solo formato, una sola casa (ticket
+// captura-web 03).
+export function markdownDe(ficha) {
+  const meta = [
+    `titulo: ${quoted(ficha.titulo)}`,
+    `artista: ${quoted(ficha.artista)}`,
+    `fecha: ${ficha.fecha}`,
+  ];
+  if (ficha.spotify?.trim()) meta.push(`spotify: ${quoted(ficha.spotify.trim())}`);
+  for (const { clave, valor } of ficha.claves ?? []) {
+    if (!clave.trim() || !String(valor).trim()) continue;
+    const v = String(valor).trim();
+    meta.push(`${clave.trim()}: ${/^-?\d+(?:[.,]\d+)?$/.test(v) ? v : quoted(v)}`);
+  }
+  return `---\n${meta.join("\n")}\n---\n\n${(ficha.cuerpo ?? "").trim()}\n`;
+}
