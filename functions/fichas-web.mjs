@@ -32,3 +32,13 @@ export function fichaDeFila(fila) {
     cuerpo: fila.cuerpo,
   };
 }
+
+// la fusión como pieza pura (ticket 05): las entradas web PISAN la versión
+// horneada del mismo slug (la edición web se sirve por delante del deploy)
+// y los slugs con borrado pedido desaparecen del todo — ocultos ya, el
+// próximo sync los quita del catálogo
+export function fusionar(indice, entradasWeb, slugsOcultos) {
+  const ocultos = new Set(slugsOcultos);
+  const web = new Set(entradasWeb.map((e) => e.slug));
+  return [...indice.filter((e) => !ocultos.has(e.slug) && !web.has(e.slug)), ...entradasWeb];
+}

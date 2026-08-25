@@ -6,7 +6,7 @@
 // La honesta se decide sobre el cosine puro — el boost del feedback puede
 // subir el score, pero no disfraza un mal match.
 import { rankear, rerankear, UMBRAL, MODELO } from "../rank.mjs";
-import { entradaDeFila } from "../fichas-web.mjs";
+import { entradaDeFila, fusionar } from "../fichas-web.mjs";
 import { cargarIndice } from "./indice.mjs";
 import { leerCuerpo } from "./cuerpo.mjs";
 import { RETENCION_MS } from "../feedback.mjs";
@@ -26,7 +26,7 @@ export async function onRequestPost(context) {
     cargarEventos(env),
   ]);
 
-  const entradas = [...indice, ...web];
+  const entradas = fusionar(indice, web.entradas, web.ocultos);
   const porCosine = rankear(entradas, qvecs[0], { filtros: cuerpo.filtros ?? {}, top: entradas.length });
   const honesto = porCosine.length > 0 && porCosine[0].score >= UMBRAL;
   const resultados = rerankear(porCosine, qvecs[0], eventos)
@@ -35,18 +35,25 @@ export async function onRequestPost(context) {
   return Response.json({ resultados, umbral: UMBRAL, honesto });
 }
 
-// fichas web publicadas con su vector: la fusión del 02. Solo estado
-// publicada y sin borrado pedido (los borradores esperan al autor); sin D1
-// (o vacía, o caída) la búsqueda queda exactamente como hoy
+// fichas web publicadas (ticket 02): las sin borrado pedido rankean junto al
+// índice; las con borrado pedido ocultan su slug del índice hasta que el
+// sync las retire del catálogo (05). Sin D1 (o vacía, o caída) la búsqueda
+// queda exactamente como hoy
 async function cargarFichasWeb(env) {
-  if (!env.DB) return [];
+  if (!env.DB) return { entradas: [], ocultos: [] };
   try {
     const { results } = await env.DB.prepare(
-      "SELECT slug, titulo, artista, fecha, spotify, claves, cuerpo, vector FROM fichas_web WHERE estado = 'publicada' AND borrado_pedido = 0 AND vector IS NOT NULL",
+      "SELECT slug, titulo, artista, fecha, spotify, claves, cuerpo, vector, borrado_pedido FROM fichas_web WHERE estado = 'publicada'",
     ).all();
-    return results.map(entradaDeFila);
+    const entradas = [];
+    const ocultos = [];
+    for (const fila of results) {
+      if (fila.borrado_pedido) ocultos.push(fila.slug);
+      else if (fila.vector) entradas.push(entradaDeFila(fila));
+    }
+    return { entradas, ocultos };
   } catch {
-    return [];
+    return { entradas: [], ocultos: [] };
   }
 }
 

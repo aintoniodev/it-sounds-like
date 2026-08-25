@@ -19,6 +19,8 @@ type FichaWeb = {
   borrado_pedido: number;
   editada_en: number;
 };
+type ResumenCatalogo = { slug: string; titulo: string; artista: string; fecha: string };
+type EntradaIndice = FichaWeb & { body: string; dims: Record<string, string> };
 
 const app = document.getElementById("app")!;
 
@@ -116,6 +118,7 @@ app.innerHTML = `
         <div class="fila-botones">
           <button type="submit" value="publicada">publicar</button>
           <button type="submit" value="borrador" class="secundario">guardar borrador</button>
+          <button type="button" class="secundario cancelar" hidden>cancelar edición</button>
         </div>
         <div class="aviso"></div>
       </form>
@@ -123,8 +126,11 @@ app.innerHTML = `
       <h2>tus fichas en la web</h2>
       <ul class="fichas"></ul>
       <p class="vacio" hidden>aún no hay fichas escritas desde la web.</p>
+      <h2>del catálogo <span class="contador"></span></h2>
+      <ul class="fichas catalogo"></ul>
       <p class="nota">lo publicado sale en las búsquedas al instante y el próximo deploy lo adopta a
-      catalogo/. el borrador es tuyo: no lo ve nadie hasta que lo publicas.</p>
+      catalogo/. el borrador es tuyo: no lo ve nadie hasta que lo publicas. editar o borrar una ficha
+      del catálogo abre su sombra en la web: la nueva versión se sirve por delante del deploy.</p>
     </section>
 
     <a class="volver" href="/">← volver</a>
@@ -137,7 +143,10 @@ const salir = app.querySelector<HTMLButtonElement>(".salir")!;
 const formFicha = app.querySelector<HTMLFormElement>(".ficha")!;
 const avisoFicha = formFicha.querySelector<HTMLElement>(".aviso")!;
 const ulFichas = app.querySelector<HTMLElement>(".fichas")!;
+const ulCatalogo = app.querySelector<HTMLElement>(".catalogo")!;
+const contador = app.querySelector<HTMLElement>(".contador")!;
 const vacio = app.querySelector<HTMLElement>(".vacio")!;
+const cancelar = formFicha.querySelector<HTMLButtonElement>(".cancelar")!;
 const divClaves = formFicha.querySelector<HTMLElement>(".claves")!;
 const [titulo, artista, fecha, spotify, cuerpo] = ["titulo", "artista", "fecha", "spotify", "cuerpo"].map(
   (id) => app.querySelector<HTMLInputElement>(`#${id}`)!,
@@ -189,6 +198,68 @@ const filaClave = (clave = "", valor = "") => {
 };
 formFicha.querySelector<HTMLButtonElement>(".anadir-clave")!.onclick = () => filaClave();
 
+// la ficha en edición (05): null = ficha nueva. El índice público alimenta
+// el prefill de las adoptadas (cuerpo y claves viven ahí, en claro)
+let editando: string | null = null;
+let indicePublico: EntradaIndice[] | null = null;
+const entradaDeIndice = async (slug: string) => {
+  if (!indicePublico) indicePublico = (await (await fetch("/index.json")).json()) as EntradaIndice[];
+  return indicePublico.find((e) => e.slug === slug);
+};
+
+const botonAccion = (texto: string, haz: () => void) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = texto;
+  b.onclick = haz;
+  return b;
+};
+
+function prefill(f: {
+  slug: string;
+  titulo: string;
+  artista: string;
+  fecha: string;
+  spotify?: string | null;
+  cuerpo?: string;
+  claves?: { clave: string; valor: string | number }[] | string | null;
+}) {
+  editando = f.slug;
+  titulo.value = f.titulo;
+  artista.value = f.artista;
+  fecha.value = f.fecha;
+  spotify.value = f.spotify ?? "";
+  cuerpo.value = f.cuerpo ?? PLANTILLA;
+  divClaves.replaceChildren();
+  const claves = typeof f.claves === "string" ? (JSON.parse(f.claves) as { clave: string; valor: string }[]) : f.claves ?? [];
+  for (const { clave, valor } of claves) filaClave(clave, String(valor));
+  cancelar.hidden = false;
+  avisa(avisoFicha, `editando: ${f.slug} — guarda para publicar la nueva versión`, "ok");
+  formFicha.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function fichaNueva() {
+  editando = null;
+  cancelar.hidden = true;
+  formFicha.reset();
+  fecha.value = hoy();
+  cuerpo.value = PLANTILLA;
+  divClaves.replaceChildren();
+  avisoFicha.style.display = "none";
+}
+cancelar.onclick = fichaNueva;
+
+async function borrar(slug: string) {
+  if (!confirm(`¿borrar ${slug}? si ya es del catálogo, deja de salir en las búsquedas ya y el próximo deploy la quita del todo.`)) return;
+  const r = await api(`/api/captura?slug=${encodeURIComponent(slug)}`, avisoFicha, { method: "DELETE" });
+  if (!r) return;
+  if (r.ok) {
+    const { oculta } = (await r.json()) as { oculta: boolean };
+    avisa(avisoFicha, oculta ? `oculta ya: ${slug} — el próximo deploy la quita del catálogo` : `borrada: ${slug}`, "ok");
+    await pintarSesion();
+  } else avisa(avisoFicha, await r.text(), "err");
+}
+
 function avisa(el: HTMLElement, texto: string, tono: "err" | "ok") {
   el.textContent = texto;
   el.className = `aviso ${tono}`;
@@ -227,7 +298,7 @@ async function pintarSesion(): Promise<boolean> {
     cerrarSesion();
     return false;
   }
-  const { fichas } = (await r.json()) as { fichas: FichaWeb[] };
+  const { fichas, catalogo } = (await r.json()) as { fichas: FichaWeb[]; catalogo: ResumenCatalogo[] };
   login.hidden = true;
   salir.hidden = false;
   taller.hidden = false;
@@ -248,23 +319,58 @@ async function pintarSesion(): Promise<boolean> {
         <span class="acciones"></span>`;
       li.querySelector<HTMLElement>(".titulo")!.textContent = `${f.titulo} — ${f.artista}`;
       li.querySelector<HTMLElement>(".meta")!.textContent = f.fecha;
-      if (f.estado === "borrador" && !f.borrado_pedido) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.textContent = "publicar";
-        b.onclick = async () => {
-          b.disabled = true;
-          const r2 = await api("/api/captura/publicar", avisoFicha, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ slug: f.slug }),
-          });
-          if (r2?.ok) avisa(avisoFicha, `publicada: ${f.slug} — ya sale en las búsquedas`, "ok");
-          else if (r2) avisa(avisoFicha, await r2.text(), "err");
-          await pintarSesion();
-        };
-        li.querySelector<HTMLElement>(".acciones")!.appendChild(b);
+      const acciones = li.querySelector<HTMLElement>(".acciones")!;
+      if (!f.borrado_pedido) {
+        if (f.estado === "borrador")
+          acciones.appendChild(
+            botonAccion("publicar", async () => {
+              const r2 = await api("/api/captura/publicar", avisoFicha, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ slug: f.slug }),
+              });
+              if (r2?.ok) avisa(avisoFicha, `publicada: ${f.slug} — ya sale en las búsquedas`, "ok");
+              else if (r2) avisa(avisoFicha, await r2.text(), "err");
+              await pintarSesion();
+            }),
+          );
+        acciones.appendChild(botonAccion("editar", () => prefill(f)));
+        acciones.appendChild(botonAccion("borrar", () => borrar(f.slug)));
       }
+      return li;
+    }),
+  );
+  // el catálogo: adoptadas o nacidas locales — editar abre su sombra en la web
+  contador.textContent = catalogo.length ? `(${catalogo.length})` : "";
+  ulCatalogo.replaceChildren(
+    ...catalogo.map((f) => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span class="que">
+          <span class="titulo"></span>
+          <span class="meta"></span>
+        </span>
+        <span class="estado">catálogo</span>
+        <span class="acciones"></span>`;
+      li.querySelector<HTMLElement>(".titulo")!.textContent = `${f.titulo} — ${f.artista}`;
+      li.querySelector<HTMLElement>(".meta")!.textContent = f.fecha;
+      const acciones = li.querySelector<HTMLElement>(".acciones")!;
+      acciones.appendChild(
+        botonAccion("editar", async () => {
+          const e = await entradaDeIndice(f.slug);
+          if (!e) return avisa(avisoFicha, `no encuentro ${f.slug} en el índice — recarga`, "err");
+          prefill({
+            slug: f.slug,
+            titulo: e.titulo,
+            artista: e.artista,
+            fecha: e.fecha,
+            spotify: e.spotify,
+            cuerpo: e.body,
+            claves: Object.entries(e.dims ?? {}).map(([clave, valor]) => ({ clave, valor })),
+          });
+        }),
+      );
+      acciones.appendChild(botonAccion("borrar", () => borrar(f.slug)));
       return li;
     }),
   );
@@ -308,22 +414,24 @@ formFicha.onsubmit = async (e) => {
   boton.disabled = true;
   try {
     const r = await api("/api/captura", avisoFicha, {
-      method: "POST",
+      method: editando ? "PUT" : "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(ficha),
+      body: JSON.stringify(editando ? { slug: editando, ficha } : ficha),
     });
     if (!r) return; // red caída: el aviso ya lo dice
-    if (r.status === 201) {
+    if (r.status === 201 || r.ok) {
       const { slug } = (await r.json()) as { slug: string };
       avisa(
         avisoFicha,
-        estado === "borrador" ? `borrador guardado: ${slug} — invisible hasta que lo publiques` : `publicada: ${slug} — ya sale en las búsquedas`,
+        editando
+          ? `guardada la edición: ${slug} — la nueva versión se sirve ya, por delante del deploy`
+          : estado === "borrador"
+            ? `borrador guardado: ${slug} — invisible hasta que lo publiques`
+            : `publicada: ${slug} — ya sale en las búsquedas`,
         "ok",
       );
-      formFicha.reset();
-      fecha.value = hoy();
-      cuerpo.value = PLANTILLA; // la siguiente ficha también arranca con las secciones
-      divClaves.replaceChildren();
+      indicePublico = null; // la sombra cambia lo que se sirve: sin caché vieja
+      fichaNueva();
       await pintarSesion();
     } else {
       avisa(avisoFicha, await r.text(), "err");

@@ -90,6 +90,91 @@ export async function onRequestPost(context) {
   return Response.json({ ok: true, slug }, { status: 201 });
 }
 
+// PUT /api/captura — editar (ticket 05): una ficha web se actualiza; una
+// ficha adoptada (vive en el índice, no en el D1) abre su SOMBRA: fila nueva
+// que la fusión sirve por delante del deploy hasta que el sync la adopte.
+// El slug es la identidad: cambiar título/artista/fecha es otra ficha.
+export async function onRequestPut(context) {
+  const { request, env } = context;
+  if (!(await autorizado(request, env))) return noAutorizado();
+  const { cuerpo, error } = await leerCuerpo(request);
+  if (error) return error;
+  const slug = typeof cuerpo?.slug === "string" ? cuerpo.slug.trim() : "";
+  const ficha = cuerpo?.ficha;
+  if (!slug) return new Response("falta el slug de la ficha a editar", { status: 400 });
+  const err = errorDeFicha(ficha) ?? errorDeTipos(ficha ?? {});
+  if (err) return new Response(err, { status: 400 });
+
+  const existente = await env.DB.prepare("SELECT estado FROM fichas_web WHERE slug = ?").bind(slug).first();
+  if (!existente) {
+    const enIndice = (await cargarIndice(request)).some((e) => e.slug === slug);
+    if (!enIndice) return new Response(`no hay ficha con ese nombre: ${slug}`, { status: 404 });
+  }
+  const estado = ficha.estado ?? existente?.estado ?? "publicada";
+  let vector = null;
+  if (estado === "publicada") {
+    try {
+      const { data } = await env.AI.run(MODELO, { text: [ficha.cuerpo ?? ""] });
+      vector = JSON.stringify(data[0]);
+    } catch {}
+  }
+  await env.DB.prepare(
+    `INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, editada_en, vector, borrado_pedido)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+     ON CONFLICT(slug) DO UPDATE SET titulo = excluded.titulo, artista = excluded.artista, fecha = excluded.fecha,
+       spotify = excluded.spotify, claves = excluded.claves, cuerpo = excluded.cuerpo, estado = excluded.estado,
+       editada_en = excluded.editada_en, vector = excluded.vector, borrado_pedido = 0`,
+  )
+    .bind(
+      slug,
+      ficha.titulo,
+      ficha.artista,
+      ficha.fecha,
+      ficha.spotify?.trim() || null,
+      ficha.claves ? JSON.stringify(ficha.claves) : null,
+      ficha.cuerpo ?? "",
+      estado,
+      Date.now(),
+      vector,
+    )
+    .run();
+  return Response.json({ ok: true, slug });
+}
+
+// DELETE /api/captura?slug=… — borrar (ticket 05): una ficha que solo vive
+// en la web desaparece sin rastro; una adoptada (en el índice) recibe
+// tombstone: borrado_pedido=1 la oculta de las búsquedas YA, y el próximo
+// sync la quita de catalogo/ con su commit
+export async function onRequestDelete(context) {
+  const { request, env } = context;
+  if (!(await autorizado(request, env))) return noAutorizado();
+  const slug = new URL(request.url).searchParams.get("slug")?.trim();
+  if (!slug) return new Response("falta el slug", { status: 400 });
+
+  const fila = await env.DB.prepare("SELECT borrado_pedido FROM fichas_web WHERE slug = ?").bind(slug).first();
+  if (!fila) {
+    const entrada = (await cargarIndice(request)).find((e) => e.slug === slug);
+    if (!entrada) return new Response(`no hay ficha con ese nombre: ${slug}`, { status: 404 });
+    // ficha adoptada sin sombra: la tombstone necesita los NOT NULL cubiertos
+    const claves = JSON.stringify(Object.entries(entrada.dims ?? {}).map(([clave, valor]) => ({ clave, valor })));
+    await env.DB.prepare(
+      "INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, editada_en, vector, borrado_pedido) VALUES (?, ?, ?, ?, ?, ?, ?, 'publicada', ?, NULL, 1)",
+    )
+      .bind(slug, entrada.titulo, entrada.artista, entrada.fecha, entrada.spotify ?? null, claves, entrada.body ?? "", Date.now())
+      .run();
+    return Response.json({ ok: true, slug, oculta: true });
+  }
+  const enIndice = (await cargarIndice(request)).some((e) => e.slug === slug);
+  if (enIndice && !fila.borrado_pedido) {
+    await env.DB.prepare("UPDATE fichas_web SET borrado_pedido = 1, editada_en = ? WHERE slug = ?")
+      .bind(Date.now(), slug)
+      .run();
+    return Response.json({ ok: true, slug, oculta: true });
+  }
+  await env.DB.prepare("DELETE FROM fichas_web WHERE slug = ?").bind(slug).run();
+  return Response.json({ ok: true, slug, oculta: false });
+}
+
 export async function onRequestGet(context) {
   const { request, env } = context;
   if (!(await autorizado(request, env))) return noAutorizado();

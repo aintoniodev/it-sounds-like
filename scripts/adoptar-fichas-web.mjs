@@ -1,13 +1,27 @@
-// El sync del CI (captura-web 03): adopta las fichas web publicadas al
+// El sync del CI (captura-web 03/05): adopta las fichas web publicadas al
 // catálogo ANTES de hornear — un deploy nunca se come una ficha en camino.
 // Lee fichas_web por la API de D1 (nada de bindings: esto corre en el runner,
-// no en el edge), escribe el markdown en catalogo/ con el render compartido
-// de functions/ficha.mjs, commitea el "commit del sync" y RECÉN ENTONCES
-// retira las filas: si algo falla antes del deploy, la fusión del 02 sigue
-// sirviendo la ficha desde D1 y el próximo run reintenta. Los borradores no
-// se adoptan: esperan al autor. Fuera del CI (invocación manual) el commit
-// no lleva [skip ci]: sin un run que hornee detrás, la ficha quedaría invisible.
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+// no en el edge) y reconcilia con el catálogo según el reducer validado en
+// prototype/fichas-desde-la-web:
+//
+//   publicada, sin fichero   → se adopta: markdown + commit. La FILA QUEDA:
+//                              la fusión sigue sirviéndola hasta que el
+//                              deploy la hornee; el próximo run la retira.
+//   publicada, con fichero   → conflicto potencial: gana la edición más
+//                              reciente — la de la web (editada_en) contra
+//                              el último commit del fichero (git es la
+//                              fuente de verdad y su historia decide).
+//   con borrado pedido       → si el fichero existe: git rm + commit, la
+//                              fila queda ocultando al índice viejo; si ya
+//                              no existe: la fila se retira.
+//   borrador                 → ni tocado: espera al autor.
+//
+// Retirar la fila un run después del commit es lo que cierra la ventana: el
+// deploy de este run hornea el catálogo nuevo mientras la fusión tapa con la
+// fila vieja — nunca hay un hueco donde nadie sirva la ficha.
+// Fuera del CI (invocación manual) el commit no lleva el marcador de salto:
+// sin un run que hornee detrás, la ficha quedaría invisible.
+import { readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { markdownDe } from "../functions/ficha.mjs";
@@ -40,45 +54,84 @@ async function d1(sql, params = []) {
   return j.result[0];
 }
 
+// el momento de la última edición LOCAL: el commit más reciente que tocó el
+// fichero (ms epoch). Fichero sin historia (creado local, sin commitear):
+// gana lo local — acaba de nacer en la fuente de verdad
+function editadaLocalmente(ruta) {
+  let ts = "";
+  try {
+    ts = execSync(`git log -1 --format=%ct -- ${JSON.stringify(ruta)}`, { cwd: RAIZ, stdio: ["pipe", "pipe", "ignore"] }).toString().trim();
+  } catch {}
+  return ts ? Number(ts) * 1000 : Infinity;
+}
+
 const { results: filas } = await d1(
-  "SELECT slug, titulo, artista, fecha, spotify, claves, cuerpo, editada_en FROM fichas_web WHERE estado = 'publicada' AND borrado_pedido = 0",
+  "SELECT slug, titulo, artista, fecha, spotify, claves, cuerpo, editada_en, borrado_pedido FROM fichas_web WHERE estado = 'publicada'",
 );
 if (!filas.length) {
-  console.log("sync: nada que adoptar; los borradores (si los hay) esperan al autor");
+  console.log("sync: nada que hacer; los borradores (si los hay) esperan al autor");
   process.exit(0);
 }
 
 // orden por editada_en: el commit del sync queda legible como la cola que era
 filas.sort((a, b) => a.editada_en - b.editada_en);
-const adoptadas = [];
-const yaEnCatalogo = [];
+const acciones = []; // líneas del relatorio
+const aCommitear = []; // ficheros escritos o borrados, para un solo commit
+const retirar = []; // slugs cuya fila ya puede salir del D1
+
 for (const fila of filas) {
   const ruta = join(CATALOGO, `${fila.slug}.md`);
-  if (existsSync(ruta)) {
-    yaEnCatalogo.push(fila.slug);
+  if (fila.borrado_pedido) {
+    if (existsSync(ruta)) {
+      rmSync(ruta);
+      aCommitear.push(ruta);
+      acciones.push(`borró "${fila.titulo}" del catálogo, como pidió el autor (la fila oculta hasta el próximo run)`);
+    } else {
+      retirar.push(fila.slug);
+      acciones.push(`retiró la fila de "${fila.titulo}" (el catálogo ya no la tiene)`);
+    }
     continue;
   }
-  writeFileSync(ruta, markdownDe(fichaDeFila(fila)));
-  adoptadas.push(fila.slug);
+  if (!existsSync(ruta)) {
+    writeFileSync(ruta, markdownDe(fichaDeFila(fila)));
+    aCommitear.push(ruta);
+    acciones.push(`adoptó "${fila.titulo}" al catálogo (la fila tapa con la fusión hasta el deploy)`);
+    continue;
+  }
+  const local = editadaLocalmente(ruta);
+  if (fila.editada_en > local) {
+    writeFileSync(ruta, markdownDe(fichaDeFila(fila)));
+    aCommitear.push(ruta);
+    acciones.push(`en "${fila.titulo}" ganó la edición de la web (${new Date(fila.editada_en).toISOString()})`);
+  } else {
+    retirar.push(fila.slug);
+    acciones.push(`en "${fila.titulo}" ganó la edición local; la de la web quedó pisada`);
+  }
 }
 
-if (adoptadas.length) {
-  // commit y push ANTES de retirar filas: si el push falla, el paso muere,
-  // no hay deploy, y las filas siguen ahí para el próximo run
-  const git = (cmd) => execSync(`git ${cmd}`, { cwd: RAIZ, stdio: "pipe" });
+if (aCommitear.length) {
+  // commit y push ANTES de retirar nada: si el push falla, el paso muere sin
+  // deploy y todo queda como estaba para el próximo run. El mensaje entra
+  // por stdin: los títulos pueden traer comillas
+  const git = (cmd, input) => execSync(`git ${cmd}`, { cwd: RAIZ, stdio: "pipe", input });
   git("add catalogo");
-  git(`-c user.name="sync fichas-web" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "sync: adopta ${adoptadas.length} ficha(s) web al catálogo${EN_CI ? " [skip ci]" : ""}"`);
+  const mensaje = [
+    `sync: reconcilia fichas web con el catálogo${EN_CI ? " [skip ci]" : ""}`,
+    "",
+    ...acciones.map((a) => `el sync ${a}`),
+  ].join("\n");
+  git(
+    `-c user.name="sync fichas-web" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -F -`,
+    mensaje,
+  );
   git("push");
-  console.log(`sync: adoptadas y empujadas → ${adoptadas.join(", ")}`);
-}
-for (const slug of yaEnCatalogo) {
-  // el slug ya vive en git (adopción previa cuyo borrado falló, o edición
-  // local de la misma ficha): gana lo que está en catalogo/, la fila se retira
-  console.log(`sync: ${slug} ya estaba en catalogo/ — retiro la fila, gana lo que está en git`);
+  console.log(`sync: commit con ${aCommitear.length} fichero(s) empujado`);
 }
 
-// retirar las filas procesadas recién con el commit a salvo; los borradores
-// nunca entraron a `filas` y sobreviven intactos
-const marcas = filas.map(() => "?").join(", ");
-const { meta } = await d1(`DELETE FROM fichas_web WHERE slug IN (${marcas})`, filas.map((f) => f.slug));
-console.log(`sync: ${meta.changes} fila(s) retirada(s) de fichas_web; catalogo/ es la fuente de verdad`);
+if (retirar.length) {
+  const marcas = retirar.map(() => "?").join(", ");
+  const { meta } = await d1(`DELETE FROM fichas_web WHERE slug IN (${marcas})`, retirar);
+  console.log(`sync: ${meta.changes} fila(s) retirada(s) de fichas_web`);
+}
+for (const a of acciones) console.log(`sync: el sync ${a}`);
+if (!acciones.length) console.log("sync: filas ya reconciliadas, nada que hacer");

@@ -3,7 +3,7 @@
 // — misma tarjeta, mismos filtros, sin distinguir procedencia.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { entradaDeFila, fichaDeFila } from "../functions/fichas-web.mjs";
+import { entradaDeFila, fichaDeFila, fusionar } from "../functions/fichas-web.mjs";
 import { rankear, pasaFiltros } from "../functions/rank.mjs";
 
 const fila = {
@@ -65,4 +65,24 @@ test("fichaDeFila: la fila lista para que markdownDe la serialice al catálogo",
     cuerpo: fila.cuerpo,
   });
   assert.doesNotThrow(() => fichaDeFila({ ...fila, claves: null }));
+});
+
+test("fusionar: la sombra web pisa la versión horneada del mismo slug (05)", () => {
+  const indice = [
+    { slug: "a", titulo: "A", vector: [1, 0] },
+    { slug: "b", titulo: "B vieja", vector: [0, 1] },
+  ];
+  const sombra = [{ slug: "b", titulo: "B nueva", vector: [1, 1] }];
+  const fusion = fusionar(indice, sombra, []);
+  assert.deepEqual(fusion.map((e) => e.slug), ["a", "b"]);
+  assert.equal(fusion.find((e) => e.slug === "b").titulo, "B nueva"); // sin duplicidad
+});
+
+test("fusionar: el borrado pedido oculta su slug del índice YA", () => {
+  const indice = [
+    { slug: "a", titulo: "A", vector: [1, 0] },
+    { slug: "b", titulo: "B", vector: [0, 1] },
+  ];
+  assert.deepEqual(fusionar(indice, [], ["b"]).map((e) => e.slug), ["a"]);
+  assert.deepEqual(fusionar(indice, [], []).map((e) => e.slug), ["a", "b"]); // sin ocultos, como hoy
 });
