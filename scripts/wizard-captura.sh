@@ -174,6 +174,12 @@ stage "Deploy: push y CI"
 if [[ -n $(git log @{u}..HEAD --oneline 2>/dev/null) ]]; then
   git push
   say "Push hecho: el CI hornea y despliega (suite, build público, functions)."
+elif [[ "$TOKEN" != "$ACTUAL" ]]; then
+  # un secret de Pages solo liga con un deploy nuevo: rotar sin cambios que
+  # empujar necesita este commit vacío para que el token nuevo arranque
+  git commit --allow-empty -m "captura-web: redeploy — secret AUTH_TOKEN actualizado (wizard)"
+  git push
+  say "Token nuevo sin cambios de código: commit vacío para que el deploy lo ligue."
 else
   say "No hay commits por subir; el deployed actual ya lleva la captura. ✓"
 fi
