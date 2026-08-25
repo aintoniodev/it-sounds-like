@@ -1,7 +1,9 @@
-// La página de privacidad del sitio público (ticket 06): la verdad de la
-// tabla feedback de D1 en lenguaje claro, campo por campo, y el borrado del
-// identificador del visitante — que elimina el hash del navegador, su
-// historial local y las filas de D1 que lo llevan. Sin frases legales.
+// La página de privacidad del sitio público: la verdad de las tablas de D1
+// en lenguaje claro, campo por campo, y el borrado del identificador del
+// visitante — que elimina el hash del navegador, su historial local y las
+// filas de D1 que lo llevan. Sin frases legales. Actualizada con lo que
+// guarda la captura del autor (captura-web) sin tocar la promesa al
+// visitante: seguirá sin haber IP, cookies ni user-agent para quien busca.
 import { leerVisitante, borrarVisitante } from "./identidad";
 
 const app = document.getElementById("app")!;
@@ -61,6 +63,17 @@ app.innerHTML = `
     <p>El autor del catálogo, y nadie más: no hay telemetría de terceros, no
     hay analítica aparte de esta tabla. Con ella el sitio aprende qué fichas
     clavan y cuáles no.</p>
+
+    <h2>lo que guarda la captura del autor</h2>
+    <p>Si solo buscas, nada de esto te toca. El autor escribe fichas desde
+    <code>/captura</code> con un token privado, y eso guarda tres cosas más:</p>
+    <dl>
+      <div><dt><code>fichas_web</code></dt><dd>las fichas que el autor escribe desde el móvil, con su contenido, hasta el próximo deploy las adopta el catálogo (git). Borrarlas está en su mano, desde la propia captura.</dd></div>
+      <div><dt><code>intentos_login</code></dt><dd>si alguien intenta entrar con tokens equivocados, tu IP y un contador durante una ventana de 10 minutos. Es la puerta anti-fuerza-bruta: a los cinco fallos se bloquea y la fila se purga al día.</dd></div>
+      <div><dt><code>publicaciones</code></dt><dd>si un post a Instagram (del autor, al guardar una ficha) salió, quedó pendiente o falló, y con qué portada y caption. Del autor, para el autor.</dd></div>
+    </dl>
+    <p>La sesión del autor es una cookie <code>__Host-</code> HttpOnly que caduca sola
+    en 12 horas. Para quien busca sigue sin haber cookies, IP ni user-agent.</p>
 
     <h2>borrar tu identificador</h2>
     <p>Elimina el hash de tu navegador y borra las filas que lo llevan. Tus

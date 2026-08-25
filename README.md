@@ -41,5 +41,7 @@ Perfil objetivo: 1.000 visitantes/día × ~3 búsquedas. Márgenes medidos contr
 | Workers AI (bge-m3, neurons) | ~163/día | 10.000/día | 61× |
 | Requests de Functions | 6.000/día peor caso | 100.000/día | 6 % |
 | Feedback en D1 | 300–3.000 rows/día | 100.000 rows/día | 0,3–3 % |
+| Captura web en D1 (fichas_web, intentos_login, publicaciones) | ~1 ficha/día + decenas de filas de login | 100.000 rows/día | <0,1 % |
+| Turnstile (login del autor) | ~1 verificación/día | verificaciones ilimitadas | ∞ |
 
 Sin telemetría de terceros: la tabla de feedback es toda la analítica. El recall de cada run (en frío y con feedback) queda en el summary del CI.
