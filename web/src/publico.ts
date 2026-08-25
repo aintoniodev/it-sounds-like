@@ -566,7 +566,8 @@ async function buscar(abrirPrimero = false) {
     lista.replaceChildren();
     return;
   }
-  opacidad((slug) => resultados.find((r) => r.slug === slug)?.score);
+  if (resultados.some((r) => paneles.has(r.slug))) opacidad((slug) => resultados.find((r) => r.slug === slug)?.score);
+  else resetPaneles(); // el match vive solo en la fusión (ficha web sin adoptar): la sala no se apaga entera por señalar ausencias
   lista.replaceChildren(
     ...resultados.map((r, i) => {
       const div = document.createElement("div");

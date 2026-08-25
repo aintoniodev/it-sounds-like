@@ -80,6 +80,36 @@ confirm() {
   [[ "$reply" =~ ^[Yy] ]]
 }
 
+# ask VAR "Prompt" reads a visible value into $VAR; offers the .dev.vars
+# value as the default on re-runs (Enter keeps it)
+ask() {
+  local key="$1" prompt="$2" current input
+  current=$(_existing .dev.vars "$key" || true)
+  if [[ -n "$current" ]]; then
+    printf '  %s%s%s %s[Enter keeps current]%s ' "$BOLD" "$prompt" "$RESET" "$DIM" "$RESET"
+  else
+    printf '  %s%s%s ' "$BOLD" "$prompt" "$RESET"
+  fi
+  read -r input || true
+  [[ -z "$input" && -n "$current" ]] && input="$current"
+  printf -v "$key" '%s' "$input"
+}
+
+# ask_secret VAR "Prompt" is like ask, but input is hidden
+ask_secret() {
+  local key="$1" prompt="$2" current input
+  current=$(_existing .dev.vars "$key" || true)
+  if [[ -n "$current" ]]; then
+    printf '  %s%s%s %s[Enter keeps current]%s ' "$BOLD" "$prompt" "$RESET" "$DIM" "$RESET"
+  else
+    printf '  %s%s%s ' "$BOLD" "$prompt" "$RESET"
+  fi
+  read -rs input || true
+  printf '\n'
+  [[ -z "$input" && -n "$current" ]] && input="$current"
+  printf -v "$key" '%s' "$input"
+}
+
 _existing() {
   [[ -f "$1" ]] || return 1
   local line; line=$(grep -E "^${2}=" "$1" | tail -n1) || return 1

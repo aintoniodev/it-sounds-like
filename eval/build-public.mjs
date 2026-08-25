@@ -40,6 +40,24 @@ const entries = fichas.map((f, i) => ({
   cover: null,
   vector: vecs[i],
 }));
+
+// portadas resueltas al hornear con el mismo camino que el local (server/
+// portadas.mjs: oEmbed de Spotify, fallback iTunes) y servidas como assets
+// estáticos del propio deploy. Sin red (o API caída) la ficha cae al
+// fallback de texto del cliente y la próxima pasada reintenta
+import { crearPortadas } from "../server/portadas.mjs";
+const portadas = crearPortadas({ dir: join(OUT_DIR, "portadas") });
+let deRed = 0;
+for (const e of entries) {
+  const r = await portadas.resolver(e);
+  e.cover = r.cover;
+  if (r.deRed) {
+    deRed++;
+    await new Promise((res) => setTimeout(res, 400)); // cortesía entre peticiones
+  }
+}
+console.log(`portadas: ${entries.filter((e) => e.cover).length}/${entries.length} resueltas (${deRed} consultadas en red)`);
+
 writeFileSync(join(OUT_DIR, "index.json"), JSON.stringify(entries));
 // el cliente no necesita los vectores: el rank vive en el edge
 const sinVector = ({ vector, ...f }) => f;
