@@ -94,7 +94,7 @@ app.innerHTML = `
         <label for="spotify">link de Spotify (opcional)</label>
         <input id="spotify" type="url" inputmode="url" placeholder="https://open.spotify.com/track/…" />
         <label for="cuerpo">la ficha</label>
-        <textarea id="cuerpo" placeholder="## Por qué esta canción&#10;&#10;## Para cuándo&#10;&#10;## Escucha"></textarea>
+        <textarea id="cuerpo"></textarea>
         <button type="submit">guardar ficha</button>
         <div class="aviso"></div>
       </form>
@@ -146,9 +146,14 @@ let token: string | null = leerToken();
 
 const hoy = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2,"0")}`;
 };
 fecha.value = hoy();
+// la plantilla es valor editable, no placeholder que desaparece al entrar:
+// el autor parte de las secciones sugeridas y borra o edita lo que quiera
+// (sugerencia, nunca obligación — ticket 12)
+const PLANTILLA = "## Por qué esta canción\n\n## Para cuándo\n\n## Escucha";
+cuerpo.value = PLANTILLA;
 
 function avisa(el: HTMLElement, texto: string, tono: "err" | "ok") {
   el.textContent = texto;
@@ -252,6 +257,7 @@ formFicha.onsubmit = async (e) => {
       avisa(avisoFicha, `guardada: ${slug}`, "ok");
       formFicha.reset();
       fecha.value = hoy();
+      cuerpo.value = PLANTILLA; // la siguiente ficha también arranca con las secciones
       await pintarSesion();
     } else {
       avisa(avisoFicha, await r.text(), "err");
