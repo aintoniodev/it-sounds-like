@@ -13,3 +13,5 @@
 - [ ] todo usable con el pulgar en móvil: es la herramienta diaria del autor, no un panel de admin
 
 ## Comments
+
+**2026-08-25 (agente, nota del 02):** El link de Spotify opcional se adelantó a petición del usuario dentro del ticket 02: campo en el formulario de `/captura`, aceptado y validado por el endpoint desde el 01, guardado en la fila y servido en la tarjeta del resultado (el panel de búsqueda ya renderiza `spotify` como "escuchar en Spotify"). Quedan de este ticket: secciones sugeridas del cuerpo, claves custom en el formulario y el ciclo borrador/publicar con listado que distinga estados.
