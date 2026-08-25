@@ -1,10 +1,10 @@
 // La herramienta diaria del autor: escribir una ficha desde el móvil, en la
-// web pública (tracer del esfuerzo captura-web). DOM plano — decisión del
-// informe docs/research/db-auth-y-ui-de-captura.md: nada de UI-3D para
-// formularios. El token del autor viaja como Authorization: Bearer (HTTPS);
-// queda en sessionStorage de la pestaña hasta que el ticket 06 lo sustituya
-// por una cookie __Host- HttpOnly. La validación del núcleo es el mismo
-// módulo compartido que valida el endpoint (functions/ficha.mjs).
+// web pública (esfuerzo captura-web). DOM plano — decisión del informe
+// docs/research/db-auth-y-ui-de-captura.md: nada de UI-3D para formularios.
+// El token del autor viaja como Authorization: Bearer (HTTPS) mientras
+// entra; la validación del núcleo es el mismo módulo compartido que valida
+// el endpoint (functions/ficha.mjs). La plantilla es valor editable, no
+// placeholder (ticket 12).
 import { errorDeFicha, type FichaEntrante } from "../../functions/ficha.mjs";
 
 type FichaWeb = {
@@ -12,7 +12,11 @@ type FichaWeb = {
   titulo: string;
   artista: string;
   fecha: string;
+  spotify: string | null;
+  claves: string | null;
+  cuerpo: string;
   estado: "borrador" | "publicada";
+  borrado_pedido: number;
   editada_en: number;
 };
 
@@ -59,11 +63,22 @@ button:disabled { opacity: .4; cursor: default; }
 .cabecera { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .salir { margin: 0; padding: 4px 12px; font-size: 12px; }
 .fichas { list-style: none; margin: 0; padding: 0; }
-.fichas li { display: flex; gap: 10px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid rgba(239,233,223,.12); }
+.fichas li { display: flex; gap: 10px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid rgba(239,233,223,.12); flex-wrap: wrap; }
 .fichas .que { flex: 1; min-width: 0; }
 .fichas .titulo { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fichas li.borrada .titulo { text-decoration: line-through; opacity: .5; }
 .fichas .meta { font-size: 12px; opacity: .55; }
 .estado { font-size: 11px; border: 1px solid rgba(239,233,223,.3); border-radius: 999px; padding: 1px 8px; opacity: .75; white-space: nowrap; }
+.estado.borrador { border-color: #e8b17d; color: #e8b17d; }
+.estado.publicada { border-color: #7fc79c; color: #7fc79c; }
+.estado.borrado-pedido { border-color: #b3541e; color: #b3541e; }
+.acciones { display: flex; gap: 6px; }
+.acciones button { margin: 0; padding: 3px 10px; font-size: 12px; }
+.claves { display: grid; gap: 6px; }
+.claves .clave { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
+.anadir-clave { margin-top: 8px; padding: 6px 14px; font-size: 12px; }
+.fila-botones { display: flex; gap: 10px; }
+.secundario { opacity: .75; padding: 12px 16px; font-size: 13px; }
 .vacio { opacity: .55; }
 .nota { font-size: 12px; opacity: .5; margin-top: 28px; }
 .volver { display: inline-block; margin-top: 32px; font-size: 13px; opacity: .6; }
@@ -95,15 +110,21 @@ app.innerHTML = `
         <input id="spotify" type="url" inputmode="url" placeholder="https://open.spotify.com/track/…" />
         <label for="cuerpo">la ficha</label>
         <textarea id="cuerpo"></textarea>
-        <button type="submit">guardar ficha</button>
+        <label>claves libres (las dimensiones: energia, momento_del_dia…)</label>
+        <div class="claves"></div>
+        <button type="button" class="anadir-clave">añadir clave</button>
+        <div class="fila-botones">
+          <button type="submit" value="publicada">publicar</button>
+          <button type="submit" value="borrador" class="secundario">guardar borrador</button>
+        </div>
         <div class="aviso"></div>
       </form>
 
       <h2>tus fichas en la web</h2>
       <ul class="fichas"></ul>
       <p class="vacio" hidden>aún no hay fichas escritas desde la web.</p>
-      <p class="nota">lo que guardas aquí vive en la web hasta el próximo deploy: el CI lo adopta a
-      catalogo/ y pasa a ser del catálogo. nada sale en búsquedas todavía.</p>
+      <p class="nota">lo publicado sale en las búsquedas al instante y el próximo deploy lo adopta a
+      catalogo/. el borrador es tuyo: no lo ve nadie hasta que lo publicas.</p>
     </section>
 
     <a class="volver" href="/">← volver</a>
@@ -117,6 +138,7 @@ const formFicha = app.querySelector<HTMLFormElement>(".ficha")!;
 const avisoFicha = formFicha.querySelector<HTMLElement>(".aviso")!;
 const ulFichas = app.querySelector<HTMLElement>(".fichas")!;
 const vacio = app.querySelector<HTMLElement>(".vacio")!;
+const divClaves = formFicha.querySelector<HTMLElement>(".claves")!;
 const [titulo, artista, fecha, spotify, cuerpo] = ["titulo", "artista", "fecha", "spotify", "cuerpo"].map(
   (id) => app.querySelector<HTMLInputElement>(`#${id}`)!,
 );
@@ -154,6 +176,18 @@ fecha.value = hoy();
 // (sugerencia, nunca obligación — ticket 12)
 const PLANTILLA = "## Por qué esta canción\n\n## Para cuándo\n\n## Escucha";
 cuerpo.value = PLANTILLA;
+
+const filaClave = (clave = "", valor = "") => {
+  const fila = document.createElement("div");
+  fila.className = "clave";
+  fila.innerHTML = `<input placeholder="energia" /><input placeholder="7" /><button type="button">quitar</button>`;
+  const [c, v] = [...fila.querySelectorAll<HTMLInputElement>("input")];
+  c.value = clave;
+  v.value = valor;
+  fila.querySelector("button")!.onclick = () => fila.remove();
+  divClaves.appendChild(fila);
+};
+formFicha.querySelector<HTMLButtonElement>(".anadir-clave")!.onclick = () => filaClave();
 
 function avisa(el: HTMLElement, texto: string, tono: "err" | "ok") {
   el.textContent = texto;
@@ -201,15 +235,36 @@ async function pintarSesion(): Promise<boolean> {
   ulFichas.replaceChildren(
     ...fichas.map((f) => {
       const li = document.createElement("li");
+      if (f.borrado_pedido) li.classList.add("borrada");
+      const estado = f.borrado_pedido
+        ? '<span class="estado borrado-pedido">borrado pedido</span>'
+        : `<span class="estado ${f.estado}">${f.estado}</span>`;
       li.innerHTML = `
         <span class="que">
           <span class="titulo"></span>
           <span class="meta"></span>
         </span>
-        <span class="estado"></span>`;
+        ${estado}
+        <span class="acciones"></span>`;
       li.querySelector<HTMLElement>(".titulo")!.textContent = `${f.titulo} — ${f.artista}`;
       li.querySelector<HTMLElement>(".meta")!.textContent = f.fecha;
-      li.querySelector<HTMLElement>(".estado")!.textContent = f.estado;
+      if (f.estado === "borrador" && !f.borrado_pedido) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = "publicar";
+        b.onclick = async () => {
+          b.disabled = true;
+          const r2 = await api("/api/captura/publicar", avisoFicha, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ slug: f.slug }),
+          });
+          if (r2?.ok) avisa(avisoFicha, `publicada: ${f.slug} — ya sale en las búsquedas`, "ok");
+          else if (r2) avisa(avisoFicha, await r2.text(), "err");
+          await pintarSesion();
+        };
+        li.querySelector<HTMLElement>(".acciones")!.appendChild(b);
+      }
       return li;
     }),
   );
@@ -232,18 +287,24 @@ salir.onclick = cerrarSesion;
 formFicha.onsubmit = async (e) => {
   e.preventDefault();
   avisoFicha.style.display = "none";
-  const ficha: FichaEntrante = {
+  const estado = (e.submitter as HTMLButtonElement | null)?.value === "borrador" ? "borrador" : "publicada";
+  const ficha: FichaEntrante & { estado: string } = {
     titulo: titulo.value.trim(),
     artista: artista.value.trim(),
     fecha: fecha.value,
     spotify: spotify.value.trim(), // vacío → null en la fila: link opcional de verdad
     cuerpo: cuerpo.value,
+    estado,
+    claves: [...divClaves.querySelectorAll<HTMLDivElement>(".clave")].map((f) => {
+      const [c, v] = [...f.querySelectorAll<HTMLInputElement>("input")];
+      return { clave: c.value.trim(), valor: v.value.trim() };
+    }),
   };
   // el mismo módulo compartido del endpoint: el error se ve aquí, no tras la ida
   const error = errorDeFicha(ficha);
   if (error) return avisa(avisoFicha, error, "err");
 
-  const boton = formFicha.querySelector<HTMLButtonElement>("button")!;
+  const boton = e.submitter as HTMLButtonElement;
   boton.disabled = true;
   try {
     const r = await api("/api/captura", avisoFicha, {
@@ -254,10 +315,15 @@ formFicha.onsubmit = async (e) => {
     if (!r) return; // red caída: el aviso ya lo dice
     if (r.status === 201) {
       const { slug } = (await r.json()) as { slug: string };
-      avisa(avisoFicha, `guardada: ${slug}`, "ok");
+      avisa(
+        avisoFicha,
+        estado === "borrador" ? `borrador guardado: ${slug} — invisible hasta que lo publiques` : `publicada: ${slug} — ya sale en las búsquedas`,
+        "ok",
+      );
       formFicha.reset();
       fecha.value = hoy();
       cuerpo.value = PLANTILLA; // la siguiente ficha también arranca con las secciones
+      divClaves.replaceChildren();
       await pintarSesion();
     } else {
       avisa(avisoFicha, await r.text(), "err");

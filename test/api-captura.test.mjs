@@ -22,3 +22,9 @@ test("tipos inesperados en lo opcional: mensaje claro, no excepción", () => {
   assert.match(errorDeTipos({ ...valida, claves: "energia=baja" }), /claves/);
   assert.match(errorDeTipos({ ...valida, claves: [{ clave: "energia" }] }), /claves/);
 });
+
+test("el ciclo borrador/publicada: solo esos dos estados entran (04)", () => {
+  assert.equal(errorDeTipos({ ...valida, estado: "borrador" }), null);
+  assert.equal(errorDeTipos({ ...valida, estado: "publicada" }), null);
+  assert.match(errorDeTipos({ ...valida, estado: "perdida" }), /estado/);
+});

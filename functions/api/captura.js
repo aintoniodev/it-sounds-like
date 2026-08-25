@@ -19,6 +19,8 @@ export function errorDeTipos(ficha) {
   if (ficha.artista !== undefined && typeof ficha.artista !== "string") return "artista debe ser texto";
   if (ficha.spotify !== undefined && typeof ficha.spotify !== "string") return "spotify debe ser un link opcional";
   if (ficha.cuerpo !== undefined && typeof ficha.cuerpo !== "string") return "cuerpo debe ser texto";
+  if (ficha.estado !== undefined && !["borrador", "publicada"].includes(ficha.estado))
+    return "estado debe ser borrador o publicada";
   if (
     ficha.claves !== undefined &&
     (!Array.isArray(ficha.claves) ||
@@ -51,15 +53,19 @@ export async function onRequestPost(context) {
   try {
     // el embed de la fusión (ticket 02): bge-m3 en el edge, el mismo runtime
     // contra el que CI hornea el índice (~1 ficha/día: dentro del margen 61×
-    // del README). Sin embedding la ficha guarda igual y espera a la
-    // adopción del 03 para volverse buscable
+    // del README). Solo lo publicada: el borrador es invisible para la
+    // búsqueda y se embedeará al publicarse (o al adoptarlo el 03). Sin
+    // embedding la ficha guarda igual y espera a la adopción para buscar.
+    const borrador = ficha.estado === "borrador";
     let vector = null;
-    try {
-      const { data } = await env.AI.run(MODELO, { text: [ficha.cuerpo ?? ""] });
-      vector = JSON.stringify(data[0]);
-    } catch {}
+    if (!borrador) {
+      try {
+        const { data } = await env.AI.run(MODELO, { text: [ficha.cuerpo ?? ""] });
+        vector = JSON.stringify(data[0]);
+      } catch {}
+    }
     await env.DB.prepare(
-      "INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, editada_en, vector) VALUES (?, ?, ?, ?, ?, ?, ?, 'publicada', ?, ?)",
+      "INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, editada_en, vector) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
       .bind(
         slug,
@@ -69,6 +75,7 @@ export async function onRequestPost(context) {
         ficha.spotify?.trim() || null,
         ficha.claves ? JSON.stringify(ficha.claves) : null,
         ficha.cuerpo ?? "",
+        borrador ? "borrador" : "publicada",
         Date.now(),
         vector,
       )
@@ -87,7 +94,17 @@ export async function onRequestGet(context) {
   const { request, env } = context;
   if (!(await autorizado(request, env))) return noAutorizado();
   const { results } = await env.DB.prepare(
-    "SELECT slug, titulo, artista, fecha, estado, editada_en FROM fichas_web ORDER BY editada_en DESC",
+    "SELECT slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, borrado_pedido, editada_en FROM fichas_web ORDER BY editada_en DESC",
   ).all();
-  return Response.json({ fichas: results });
+  // las fichas del catálogo (adoptadas o nacidas locales) para el listado y
+  // la edición con sombra del 05: resumen ligero, el cuerpo completo lo
+  // saca el cliente del índice público. Índice ilegible → solo la web.
+  let catalogo = [];
+  try {
+    const sombras = new Set(results.map((r) => r.slug));
+    catalogo = (await cargarIndice(request))
+      .filter((e) => !sombras.has(e.slug))
+      .map(({ slug, titulo, artista, fecha }) => ({ slug, titulo, artista, fecha }));
+  } catch {}
+  return Response.json({ fichas: results, catalogo });
 }
