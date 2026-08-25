@@ -114,7 +114,7 @@ finish() {
 # STAGES: subir la captura web (token secret + tabla fichas_web + verificación)
 # ──────────────────────────────────────────────────────────────────────────
 
-TOTAL_STAGES=5
+TOTAL_STAGES=6
 SITIO="https://it-sounds-like.pages.dev"
 PROYECTO="it-sounds-like"
 
@@ -166,15 +166,53 @@ WRITTEN_SECRET+=("AUTH_TOKEN")
 note "el secret aplica al próximo deploy de Pages (el que dispara el push de abajo)"
 
 # ── 3. Tabla fichas_web en el D1 remoto ───────────────────────────────────
+# ── 3. Turnstile e Instagram (opcionales; Enter = por ahora no) ──────────
+stage "Turnstile del login e Instagram (opcional)"
+open_url "https://dash.cloudflare.com/?to=/:account/turnstile"
+step "Turnstile → Add widget: nombre 'captura', hostname it-sounds-like.pages.dev, modo Managed → Create."
+note "  copia la Site Key y la Secret Key que te enseña al crearlo"
+step "Instagram (si ya tienes la cuenta Business y el token de Graph): ten a mano IG_USER_ID e IG_TOKEN."
+ask TURNSTILE_SITE "Turnstile: Site Key (Enter para saltar)"
+ask_secret TURNSTILE_SECRET "Turnstile: Secret Key (Enter para saltar)"
+ask_secret IG_USER_ID "Instagram: IG_USER_ID (Enter para saltar)"
+ask_secret IG_TOKEN "Instagram: token de Graph de larga vida (Enter para saltar)"
+
+SUBIDOS=0
+subir_secret() {
+  local nombre="$1" valor="$2"
+  [[ -z "$valor" ]] && return 0
+  printf '%s' "$valor" | npx --yes wrangler pages secret put "$nombre" --project-name "$PROYECTO"
+  WRITTEN_SECRET+=("$nombre")
+  SUBIDOS=$((SUBIDOS + 1))
+  # también en .dev.vars: wrangler pages dev local con lo mismo que producción
+  local tmp
+  tmp=$(mktemp)
+  [[ -f .dev.vars ]] && grep -vE "^${nombre}=" .dev.vars > "$tmp" || true
+  printf '%s=%s\n' "$nombre" "$valor" >> "$tmp"
+  mv "$tmp" .dev.vars
+  chmod 600 .dev.vars
+}
+subir_secret TURNSTILE_SITE "$TURNSTILE_SITE"
+subir_secret TURNSTILE_SECRET "$TURNSTILE_SECRET"
+subir_secret IG_USER_ID "$IG_USER_ID"
+subir_secret IG_TOKEN "$IG_TOKEN"
+if (( SUBIDOS )); then
+  say "$SUBIDOS secret(s) subidos a Pages (y anotados en .dev.vars para local)."
+  note "aplican con el deploy de la etapa siguiente; el token de Instagram caduca a los ~60 días — re-ejecuta este wizard y reintenta desde /captura"
+else
+  say "Nada por ahora: el login queda con token + lockout, e Instagram en pendiente. ✓"
+fi
+
+# ── 4. Tabla fichas_web en el D1 remoto ───────────────────────────────────
 stage "Aplicar d1/schema.sql (idempotente) al D1 remoto"
 npx --yes wrangler d1 execute it-sounds-like-feedback --remote --file d1/schema.sql
 
-# ── 4. Deploy: push y CI ──────────────────────────────────────────────────
+# ── 5. Deploy: push y CI ──────────────────────────────────────────────────
 stage "Deploy: push y CI"
 if [[ -n $(git log @{u}..HEAD --oneline 2>/dev/null) ]]; then
   git push
   say "Push hecho: el CI hornea y despliega (suite, build público, functions)."
-elif [[ "$TOKEN" != "$ACTUAL" ]]; then
+elif [[ "$TOKEN" != "$ACTUAL" || "$SUBIDOS" -gt 0 ]]; then
   # un secret de Pages solo liga con un deploy nuevo: rotar sin cambios que
   # empujar necesita este commit vacío para que el token nuevo arranque
   git commit --allow-empty -m "captura-web: redeploy — secret AUTH_TOKEN actualizado (wizard)"
@@ -196,7 +234,7 @@ else
   exit 1
 fi
 
-# ── 5. Verificar el tracer en producción ──────────────────────────────────
+# ── 6. Verificar el tracer en producción ──────────────────────────────────
 stage "Verificar el tracer en producción"
 # el deploy publica estáticos y functions en momentos ligeramente distintos:
 # esperar a que el POST sin token dé el 401 de NUESTRA puerta, no el 405 de
@@ -208,6 +246,15 @@ for _ in $(seq 1 32); do
   sleep 15
 done
 [[ "$SIN" == "401" ]] && say "POST sin token → 401 genérico. ✓" || { warn "POST sin token devolvió $SIN (esperaba 401)"; exit 1; }
+
+# el login cuenta su sitekey: si Turnstile quedó configurado, el widget ya
+# guarda la puerta; si no, lo de siempre (token + lockout)
+SITE=$(curl -s "$SITIO/api/captura/login" | grep -oE '"site":"[^"]+"' | cut -d'"' -f4)
+if [[ -n "$SITE" ]]; then
+  say "Turnstile activo en el login (site ${SITE:0:8}…). ✓"
+else
+  note "Turnstile sin configurar: el login es token + lockout."
+fi
 
 HOY=$(date +%F)
 RESP=$(curl -s -w '\n%{http_code}' -X POST "$SITIO/api/captura" \
