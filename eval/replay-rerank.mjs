@@ -29,6 +29,16 @@ const top3 = (qvec, eventos) =>
     .slice(0, 3)
     .map((r) => r.ficha.slug);
 
+// Cobertura de la suite sobre el catálogo vigente: si las esperadas ya no
+// están (el autor purga fichas desde el móvil), la GANANCIA del feedback no
+// es medible y exigirla abortaría deploys sanos. El invariante duro (no bajar)
+// se comprueba siempre.
+const slugs = new Set(fichas.map((f) => f.slug));
+const esperados = [...new Set(suite.flatMap((s) => s.expected))];
+const presentes = esperados.filter((e) => slugs.has(e)).length;
+const cobertura = esperados.length ? presentes / esperados.length : 1;
+console.log(`cobertura de la suite: ${esperados.length ? `${presentes}/${esperados.length}` : "vacía"} esperadas en catálogo`);
+
 const sinFeedback = suite.map((s, i) => top3(queries[i], []));
 const eventos = suite.flatMap((s, i) =>
   s.expected.map((ficha) => ({ ficha, accion: "clavo", ts, qvec: queries[i] })),
@@ -54,15 +64,19 @@ if (rFb < rBase) {
   console.log("⚠ el feedback BAJÓ el recall: el mecanismo está mal calibrado");
   process.exit(1);
 }
-if (rFb === rBase) {
+if (rFb === rBase && cobertura >= 0.5) {
   console.log("⚠ el feedback marcado no subió ningún acierto: α no mueve nada con este catálogo");
   process.exit(1);
 }
-console.log(`✓ el feedback marcado sube el recall (+${(rFb - rBase).toFixed(3)})`);
+if (rFb === rBase) {
+  console.log("· sin ganancia medible (catálogo por debajo de la mitad de la suite) — no bloqueo");
+} else {
+  console.log(`✓ el feedback marcado sube el recall (+${(rFb - rBase).toFixed(3)})`);
+}
 
 if (process.env.GITHUB_STEP_SUMMARY) {
   appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    `### re-ranking con feedback (bge-m3)\n\n- recall@3 en frío (suelo público): **${rBase.toFixed(3)}**\n- recall@3 con feedback de la suite: **${rFb.toFixed(3)}** (+${(rFb - rBase).toFixed(3)})\n- el paso falla si el feedback baja el recall o no mueve nada\n`,
+    `### re-ranking con feedback (bge-m3)\n\n- recall@3 en frío (suelo público): **${rBase.toFixed(3)}**\n- recall@3 con feedback de la suite: **${rFb.toFixed(3)}** (+${(rFb - rBase).toFixed(3)})\n- el paso falla si el feedback baja el recall, o si no mueve nada con la suite cubierta\n`,
   );
 }
