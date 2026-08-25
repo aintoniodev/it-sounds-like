@@ -6,7 +6,7 @@
 // búsquedas: eso es el ticket 02 — aquí solo se demuestra escritura y
 // guardado. GET: el listado de fichas web del autor. Sin token válido, el
 // 401 genérico de functions/auth.mjs — mismo cuerpo para ausente y erróneo.
-import { autorizado, noAutorizado } from "../auth.mjs";
+import { puerta } from "../auth.mjs";
 import { errorDeFicha, slugDe } from "../ficha.mjs";
 import { MODELO } from "../rank.mjs";
 import { leerCuerpo } from "./cuerpo.mjs";
@@ -32,7 +32,8 @@ export function errorDeTipos(ficha) {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  if (!(await autorizado(request, env))) return noAutorizado();
+  const fallo = await puerta(request, env);
+  if (fallo) return fallo;
   const { cuerpo: ficha, error } = await leerCuerpo(request);
   if (error) return error;
 
@@ -96,7 +97,8 @@ export async function onRequestPost(context) {
 // El slug es la identidad: cambiar título/artista/fecha es otra ficha.
 export async function onRequestPut(context) {
   const { request, env } = context;
-  if (!(await autorizado(request, env))) return noAutorizado();
+  const fallo = await puerta(request, env);
+  if (fallo) return fallo;
   const { cuerpo, error } = await leerCuerpo(request);
   if (error) return error;
   const slug = typeof cuerpo?.slug === "string" ? cuerpo.slug.trim() : "";
@@ -147,7 +149,8 @@ export async function onRequestPut(context) {
 // sync la quita de catalogo/ con su commit
 export async function onRequestDelete(context) {
   const { request, env } = context;
-  if (!(await autorizado(request, env))) return noAutorizado();
+  const fallo = await puerta(request, env);
+  if (fallo) return fallo;
   const slug = new URL(request.url).searchParams.get("slug")?.trim();
   if (!slug) return new Response("falta el slug", { status: 400 });
 
@@ -177,7 +180,8 @@ export async function onRequestDelete(context) {
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  if (!(await autorizado(request, env))) return noAutorizado();
+  const fallo = await puerta(request, env);
+  if (fallo) return fallo;
   const { results } = await env.DB.prepare(
     "SELECT slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, borrado_pedido, editada_en FROM fichas_web ORDER BY editada_en DESC",
   ).all();

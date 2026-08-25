@@ -36,3 +36,12 @@ CREATE TABLE IF NOT EXISTS fichas_web (
   borrado_pedido INTEGER NOT NULL DEFAULT 0,
   vector TEXT
 );
+
+-- Contador de intentos fallidos de login por IP (ticket 06): ventana de 10
+-- minutos, bloqueo tras 5 fallos. Un puñado de filas; el cron retira las
+-- ventanas viejas. La IP solo vive aquí — nunca en feedback ni fichas.
+CREATE TABLE IF NOT EXISTS intentos_login (
+  ip TEXT PRIMARY KEY,
+  fallos INTEGER NOT NULL,
+  ventana_desde INTEGER NOT NULL
+);

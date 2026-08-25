@@ -1,11 +1,21 @@
 // La herramienta diaria del autor: escribir una ficha desde el móvil, en la
 // web pública (esfuerzo captura-web). DOM plano — decisión del informe
 // docs/research/db-auth-y-ui-de-captura.md: nada de UI-3D para formularios.
-// El token del autor viaja como Authorization: Bearer (HTTPS) mientras
-// entra; la validación del núcleo es el mismo módulo compartido que valida
-// el endpoint (functions/ficha.mjs). La plantilla es valor editable, no
-// placeholder (ticket 12).
+// El token del autor se manda UNA vez, al abrir sesión (ticket 06); de ahí
+// en adelante viaja la cookie __Host- HttpOnly que el servidor entrega. La
+// validación del núcleo es el mismo módulo compartido que valida el
+// endpoint (functions/ficha.mjs). La plantilla es valor editable (ticket 12).
 import { errorDeFicha, type FichaEntrante } from "../../functions/ficha.mjs";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement, opts: { sitekey: string }) => string;
+      getResponse: (id?: string) => string;
+      reset: (id?: string) => void;
+    };
+  }
+}
 
 type FichaWeb = {
   slug: string;
@@ -95,6 +105,7 @@ app.innerHTML = `
     <form class="login">
       <label for="token">token del autor</label>
       <input id="token" name="token" autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <div class="turnstile"></div>
       <button type="submit">entrar</button>
       <div class="aviso"></div>
     </form>
@@ -152,28 +163,11 @@ const [titulo, artista, fecha, spotify, cuerpo] = ["titulo", "artista", "fecha",
   (id) => app.querySelector<HTMLInputElement>(`#${id}`)!,
 );
 
-// el token vive en la pestaña (sessionStorage), no en localStorage: la
-// cookie __Host- del ticket 06 será su reemplazo con mejor casa. Storage
-// bloqueado: el autor re-entra el token, nada persistido.
-const CLAVE_TOKEN = "token-autor";
-const leerToken = (): string | null => {
-  try {
-    return sessionStorage.getItem(CLAVE_TOKEN);
-  } catch {
-    return null;
-  }
-};
-const guardarToken = (t: string) => {
-  try {
-    sessionStorage.setItem(CLAVE_TOKEN, t);
-  } catch {}
-};
-const olvidarToken = () => {
-  try {
-    sessionStorage.removeItem(CLAVE_TOKEN);
-  } catch {}
-};
-let token: string | null = leerToken();
+// la sesión es la cookie __Host- que el servidor entrega al abrir: el token
+// no se persiste ni vuelve a viajar (ticket 06)
+const inputToken = app.querySelector<HTMLInputElement>("#token")!;
+const divTurnstile = app.querySelector<HTMLElement>(".turnstile")!;
+let widgetTurnstile: string | undefined;
 
 const hoy = () => {
   const d = new Date();
@@ -266,14 +260,11 @@ function avisa(el: HTMLElement, texto: string, tono: "err" | "ok") {
   el.style.display = "block";
 }
 
-// fetch con el Bearer; si la red falla devuelve null y el aviso ya lo dice
-// — marcar/guardar no puede quedar en promesa rechazada sin feedback
+// fetch con la sesión (la cookie va sola, same-origin); si la red falla
+// devuelve null y el aviso ya lo dice — nada queda en promesa rechazada
 async function api(ruta: string, aviso: HTMLElement, init: RequestInit = {}): Promise<Response | null> {
   try {
-    return await fetch(ruta, {
-      ...init,
-      headers: { ...(init.headers ?? {}), authorization: `Bearer ${token}` },
-    });
+    return await fetch(ruta, { ...init, headers: { ...(init.headers ?? {}) } });
   } catch {
     avisa(aviso, "sin respuesta del servidor — prueba otra vez", "err");
     return null;
@@ -281,20 +272,19 @@ async function api(ruta: string, aviso: HTMLElement, init: RequestInit = {}): Pr
 }
 
 function cerrarSesion() {
-  token = null;
-  olvidarToken();
   login.hidden = false;
   salir.hidden = true;
   taller.hidden = true;
 }
 
-// pinta el taller si el token vale; false si no hay sesión o no es válida
-async function pintarSesion(): Promise<boolean> {
-  if (!token) return false;
+// pinta el taller si la cookie vale; false si no hay sesión. `avisa401`
+// distingue el login con token equivocado (ruido querido) de la página
+// recién abierta con la sesión caducada (silencio)
+async function pintarSesion(avisa401 = false): Promise<boolean> {
   const r = await api("/api/captura", loginAviso);
-  if (!r) return false; // red caída: sesión intacta, el aviso ya lo dice
+  if (!r) return false; // red caída: el aviso ya lo dice
   if (!r.ok) {
-    avisa(loginAviso, "no autorizado", "err");
+    if (avisa401) avisa(loginAviso, "no autorizado", "err");
     cerrarSesion();
     return false;
   }
@@ -377,18 +367,41 @@ async function pintarSesion(): Promise<boolean> {
   return true;
 }
 
+// el login manda el token UNA vez (y el reto de Turnstile si el sitio lo
+// pide); la cookie que responde hace el resto de la sesión
 login.onsubmit = async (e) => {
   e.preventDefault();
-  const t = (app.querySelector<HTMLInputElement>("#token")!.value || "").trim();
+  const t = (inputToken.value || "").trim();
   if (!t) return avisa(loginAviso, "pon el token del autor", "err");
-  token = t;
-  if (await pintarSesion()) {
-    guardarToken(t);
+  const cuerpo: Record<string, string> = { token: t };
+  if (widgetTurnstile !== undefined) cuerpo.turnstile = window.turnstile?.getResponse(widgetTurnstile) ?? "";
+  let r: Response | null;
+  try {
+    r = await fetch("/api/captura/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(cuerpo),
+    });
+  } catch {
+    return avisa(loginAviso, "sin respuesta del servidor — prueba otra vez", "err");
+  }
+  if (r.status === 200) {
+    inputToken.value = "";
     loginAviso.style.display = "none";
+    window.turnstile?.reset(widgetTurnstile);
+    await pintarSesion();
+  } else if (r.status === 429) {
+    avisa(loginAviso, await r.text(), "err");
+  } else {
+    avisa(loginAviso, r.status === 400 ? await r.text() : "no autorizado", "err");
+    window.turnstile?.reset(widgetTurnstile);
   }
 };
 
-salir.onclick = cerrarSesion;
+salir.onclick = async () => {
+  await api("/api/captura/login", loginAviso, { method: "DELETE" });
+  cerrarSesion();
+};
 
 formFicha.onsubmit = async (e) => {
   e.preventDefault();
@@ -441,4 +454,22 @@ formFicha.onsubmit = async (e) => {
   }
 };
 
-if (token) await pintarSesion();
+// al abrir: si la cookie sigue viva, directo al taller; y si el sitio pide
+// Turnstile (sitekey público vía el login), el widget aparece antes de que
+// haga falta
+(async () => {
+  try {
+    const { site } = (await (await fetch("/api/captura/login")).json()) as { site: string | null };
+    if (site) {
+      await new Promise<void>((res, rej) => {
+        const s = document.createElement("script");
+        s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        s.onload = () => res();
+        s.onerror = () => rej(new Error("sin turnstile"));
+        document.head.appendChild(s);
+      }).catch(() => {});
+      widgetTurnstile = window.turnstile?.render(divTurnstile, { sitekey: site });
+    }
+  } catch {}
+  await pintarSesion();
+})();

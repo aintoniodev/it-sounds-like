@@ -2,13 +2,14 @@
 // captura-web 04): se embedea con bge-m3 y pasa a publicada, con lo que la
 // fusión del 02 lo sirve al instante. Solo el autor. Sin embedding (AI
 // caída) publica igual: buscará cuando el sync del 03 lo adopte y hornee.
-import { autorizado, noAutorizado } from "../../auth.mjs";
+import { puerta } from "../../auth.mjs";
 import { MODELO } from "../../rank.mjs";
 import { leerCuerpo } from "../cuerpo.mjs";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  if (!(await autorizado(request, env))) return noAutorizado();
+  const fallo = await puerta(request, env);
+  if (fallo) return fallo;
   const { cuerpo, error } = await leerCuerpo(request);
   if (error) return error;
   const slug = typeof cuerpo?.slug === "string" ? cuerpo.slug.trim() : "";
