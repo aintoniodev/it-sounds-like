@@ -4,12 +4,16 @@
 
 **Blocked by:** 03, 04
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] editar una ficha adoptada: la búsqueda sirve la versión nueva al instante; el próximo push la adopta y el deploy no cambia lo que se ve
-- [ ] borrar una ficha adoptada: deja de salir en búsquedas ya; el sync la quita del catálogo con commit
-- [ ] borrar una ficha que solo vive en la web: desaparece sin dejar rastro en D1
-- [ ] conflicto (edición local + edición web de la misma ficha): gana la más reciente, y el log del sync dice cuál pisó cuál
-- [ ] el listado del autor distingue borrador / publicada / adoptada / borrado pedido
+- [x] editar una ficha adoptada: la búsqueda sirve la versión nueva al instante; el próximo push la adopta y el deploy no cambia lo que se ve
+- [x] borrar una ficha adoptada: deja de salir en búsquedas ya; el sync la quita del catálogo con commit
+- [x] borrar una ficha que solo vive en la web: desaparece sin dejar rastro en D1
+- [x] conflicto (edición local + edición web de la misma ficha): gana la más reciente, y el log del sync dice cuál pisó cuál
+- [x] el listado del autor distingue borrador / publicada / adoptada / borrado pedido
 
 ## Comments
+
+## Comments
+
+**2026-08-25 (agente):** Hecho y verificado en producción. PUT edita: la ficha web se actualiza (upsert); la adoptada abre su sombra — la fusión (`fusionar`: la entrada web pisa la homónima del índice, sin duplicidad) sirve la versión nueva por delante del deploy (DoD paso 4: la query del contenido nuevo la puntea #1). DELETE borra: web-only desaparece; adoptada recibe tombstone (`borrado_pedido=1`) que la oculta YA (DoD paso 5: Malamente fuera del top al momento) y el próximo sync la quita con `git rm` + commit; una edición revive la ficha (verificado: el PUT sobre la tombstone la devolvió al top). Conflictos según el reducer validado: el sync compara `editada_en` de la fila contra el último commit del fichero (`git log -1 --format=%ct`) — gana la más reciente y el relatorio del commit lo dice ficha a ficha. Disciplina de ventana: las filas se retiran un run DESPUÉS del commit, con la fusión tapando el deploy — nunca hay hueco donde nadie sirva la ficha (fue corrección sobre el 03, que retiraba antes). El listado muestra borrador/publicada/borrado pedido + sección del catálogo (adoptadas) con editar/borrar.

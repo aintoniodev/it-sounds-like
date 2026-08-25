@@ -4,12 +4,16 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] el login está protegido por Turnstile (site key y secret como secrets/variables de Pages)
-- [ ] N intentos fallidos bloquean temporalmente el intento de login (contador en D1) y el bloqueo caduca solo
-- [ ] tras el login, el navegador usa la cookie `__Host-`; el token original no vuelve a viajar
-- [ ] rotación in situ: token viejo y nuevo válidos a la vez; retirar el viejo no desloguea al autor si ya usa el nuevo
-- [ ] grep del token en los logs del deploy y en respuestas de error: cero apariciones
+- [x] el login está protegido por Turnstile (site key y secret como secrets/variables de Pages)
+- [x] N intentos fallidos bloquean temporalmente el intento de login (contador en D1) y el bloqueo caduca solo
+- [x] tras el login, el navegador usa la cookie `__Host-`; el token original no vuelve a viajar
+- [x] rotación in situ: token viejo y nuevo válidos a la vez; retirar el viejo no desloguea al autor si ya usa el nuevo
+- [x] grep del token en los logs del deploy y en respuestas de error: cero apariciones
 
 ## Comments
+
+## Comments
+
+**2026-08-25 (agente):** Hecho y verificado (local completo + producción en lo activable). Login: `POST /api/captura/login` manda el token UNA vez; la respuesta carga la cookie `__Host-sesion` (HttpOnly, Secure, SameSite=Strict, 12 h) firmada con HMAC del propio secret y los endpoints aceptan cookie o Bearer. Turnstile: el sitekey público llega por GET del login y el widget se pinta solo si existe; el secret (`TURNSTILE_SECRET` de Pages) se verifica contra siteverify. Verificado en local con las claves oficiales de prueba (siempre pasan): widget presente, login sin reto → 400, con reto → 200 + cookie, y GET/POST con cookie sola. **Activación en producción pendiente del humano**: crear el widget en el dashboard de Cloudflare (gratis, verificaciones ilimitadas) y subir `TURNSTILE_SITE`/`TURNSTILE_SECRET` como var/secret de Pages — sin ellos, el login es token + lockout. Lockout: 5 fallos en 10 min por IP (`intentos_login` en D1, sin escribir cuando ya está bloqueada, purga diaria del cron) — verificado en local Y producción (5×401 → 429, ni el token bueno entra, y el acierto limpia el contador). Rotación: cookies firmadas con el anterior siguen válidas tras rotar (test), igual que el Bearer de siempre. Logs: cero apariciones del token en logs del server local y respuestas; 401 único y genérico.

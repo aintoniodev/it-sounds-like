@@ -1,7 +1,7 @@
 # Publicar en Instagram al guardar desde captura
 
 Type: task
-Status: open
+Status: done
 Labels: wayfinder:task
 
 ## Question
@@ -33,3 +33,7 @@ Criterio de éxito: el autor guarda en captura desde el móvil y el post está
 en Instagram con la portada correcta y su descripción; sin portada
 sobreescrita usa la de Spotify; un fallo de Instagram no pierde la ficha ni
 el texto.
+
+## Comments
+
+**2026-08-25 (agente):** Hecho y verificado en todos los caminos que no necesitan la cuenta real. El caption del 06 vive ahora en `functions/caption.mjs` (server y edge comparten render). Al publicarse una ficha —guardar directo en publicada o publicar un borrador, que el DoD pilló como laguna y corrigió— `waitUntil` dispara el post: la imagen del autor (campo opcional en captura, persiste en `fichas_web.imagen` para sobrevivir al borrador y a las ediciones) gana; si no, la portada del oEmbed de Spotify (verificado en producción: resuelve la imagen real del track); si no, pendiente. Graph en dos pasos (`media` + `media_publish`) con `IG_USER_ID`/`IG_TOKEN` como secrets; el desenlace queda en `publicaciones` — publicado con su post, pendiente con la razón (verificado en producción: «sin token de Instagram configurado» + portada real resuelta), error con el mensaje accionable de Graph (verificado con token falso: «Invalid OAuth access token…») — y la ficha nunca se pierde: el 201 no espera a Instagram. El listado lleva badge IG y botón reintentar (`/api/captura/republicar` reusa imagen y caption exactos; verificado). Decisión pedida por el ticket: publica solo `publicada`; el borrador no dispara nada. **Para el primer post real**: cuenta Instagram Business/Creator vinculada, token de Graph de larga vida en el gestor de contraseñas → `npx wrangler pages secret put IG_USER_ID --project-name it-sounds-like` e `IG_TOKEN`; cuando caduque (~60 días), lo mismo y reintentar desde captura.
