@@ -71,7 +71,7 @@ export async function onRequestPost(context) {
         ficha.imagen?.trim() || null,
         ficha.claves ? JSON.stringify(ficha.claves) : null,
         ficha.cuerpo ?? "",
-        borrador ? "borrador" : "publicada",
+        ficha.estado === "borrador" ? "borrador" : "publicada",
         Date.now(),
         vector,
       )
