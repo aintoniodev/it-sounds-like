@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS fichas_web (
   artista TEXT NOT NULL,
   fecha TEXT NOT NULL,
   spotify TEXT,
+  imagen TEXT,
   claves TEXT,
   cuerpo TEXT NOT NULL,
   estado TEXT NOT NULL DEFAULT 'publicada' CHECK (estado IN ('borrador', 'publicada')),

@@ -67,7 +67,7 @@ export async function onRequestPost(context) {
       } catch {}
     }
     await env.DB.prepare(
-      "INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, editada_en, vector) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, imagen, claves, cuerpo, estado, editada_en, vector) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
       .bind(
         slug,
@@ -75,6 +75,7 @@ export async function onRequestPost(context) {
         ficha.artista,
         ficha.fecha,
         ficha.spotify?.trim() || null,
+        ficha.imagen?.trim() || null,
         ficha.claves ? JSON.stringify(ficha.claves) : null,
         ficha.cuerpo ?? "",
         borrador ? "borrador" : "publicada",
@@ -126,11 +127,11 @@ export async function onRequestPut(context) {
     } catch {}
   }
   await env.DB.prepare(
-    `INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, editada_en, vector, borrado_pedido)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    `INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, imagen, claves, cuerpo, estado, editada_en, vector, borrado_pedido)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
      ON CONFLICT(slug) DO UPDATE SET titulo = excluded.titulo, artista = excluded.artista, fecha = excluded.fecha,
-       spotify = excluded.spotify, claves = excluded.claves, cuerpo = excluded.cuerpo, estado = excluded.estado,
-       editada_en = excluded.editada_en, vector = excluded.vector, borrado_pedido = 0`,
+       spotify = excluded.spotify, imagen = excluded.imagen, claves = excluded.claves, cuerpo = excluded.cuerpo,
+       estado = excluded.estado, editada_en = excluded.editada_en, vector = excluded.vector, borrado_pedido = 0`,
   )
     .bind(
       slug,
@@ -138,6 +139,7 @@ export async function onRequestPut(context) {
       ficha.artista,
       ficha.fecha,
       ficha.spotify?.trim() || null,
+        ficha.imagen?.trim() || null,
       ficha.claves ? JSON.stringify(ficha.claves) : null,
       ficha.cuerpo ?? "",
       estado,
@@ -166,9 +168,9 @@ export async function onRequestDelete(context) {
     // ficha adoptada sin sombra: la tombstone necesita los NOT NULL cubiertos
     const claves = JSON.stringify(Object.entries(entrada.dims ?? {}).map(([clave, valor]) => ({ clave, valor })));
     await env.DB.prepare(
-      "INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, claves, cuerpo, estado, editada_en, vector, borrado_pedido) VALUES (?, ?, ?, ?, ?, ?, ?, 'publicada', ?, NULL, 1)",
+      "INSERT INTO fichas_web (slug, titulo, artista, fecha, spotify, imagen, claves, cuerpo, estado, editada_en, vector, borrado_pedido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'publicada', ?, NULL, 1)",
     )
-      .bind(slug, entrada.titulo, entrada.artista, entrada.fecha, entrada.spotify ?? null, claves, entrada.body ?? "", Date.now())
+      .bind(slug, entrada.titulo, entrada.artista, entrada.fecha, entrada.spotify ?? null, null, claves, entrada.body ?? "", Date.now())
       .run();
     return Response.json({ ok: true, slug, oculta: true });
   }

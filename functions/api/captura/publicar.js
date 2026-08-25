@@ -4,6 +4,7 @@
 // caída) publica igual: buscará cuando el sync del 03 lo adopte y hornee.
 import { puerta } from "../../auth.mjs";
 import { MODELO } from "../../rank.mjs";
+import { publicarFicha } from "../../publicar.mjs";
 import { leerCuerpo } from "../cuerpo.mjs";
 
 export async function onRequestPost(context) {
@@ -16,7 +17,7 @@ export async function onRequestPost(context) {
   if (!slug) return new Response("falta el slug del borrador", { status: 400 });
 
   const fila = await env.DB.prepare(
-    "SELECT cuerpo FROM fichas_web WHERE slug = ? AND estado = 'borrador' AND borrado_pedido = 0",
+    "SELECT titulo, artista, spotify, imagen, cuerpo FROM fichas_web WHERE slug = ? AND estado = 'borrador' AND borrado_pedido = 0",
   )
     .bind(slug)
     .first();
@@ -30,5 +31,8 @@ export async function onRequestPost(context) {
   await env.DB.prepare("UPDATE fichas_web SET estado = 'publicada', editada_en = ?, vector = ? WHERE slug = ?")
     .bind(Date.now(), vector, slug)
     .run();
+  // publicarse ES el momento de Instagram (ticket 11): mismo waitUntil que
+  // el guardar directo, y con la imagen que el borrador traía guardada
+  context.waitUntil(publicarFicha(env, fila, slug));
   return Response.json({ ok: true, slug });
 }
