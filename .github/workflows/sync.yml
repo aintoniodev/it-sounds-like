@@ -1,0 +1,35 @@
+name: sync
+# Latido del buzón (captura-web 03): el autor publica desde el móvil sin que
+# nadie empuje código — este run barato adopta las fichas publicadas a
+# catalogo/ y su commit dispara el deploy completo (horneado con portadas,
+# carrusel y suites). Sin pendientes, muere en segundos y no toca nada:
+# el pipeline caro solo corre cuando hay cambios de verdad.
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-sync
+  cancel-in-progress: false
+
+jobs:
+  adoptar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: adoptar fichas web al catálogo (sync)
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: node scripts/adoptar-fichas-web.mjs
