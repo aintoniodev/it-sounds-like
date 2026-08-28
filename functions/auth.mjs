@@ -4,7 +4,7 @@
 //     viaja como Authorization: Bearer UNA VEZ, al abrir sesión;
 //   - sesión posterior por cookie __Host-sesion — HttpOnly, Secure,
 //     SameSite=Strict — firmada con HMAC del propio secret y caducidad
-//     corta; AUTH_TOKEN_PREVIOUS mantiene token y cookies vigentes durante
+//     larga (400 días); AUTH_TOKEN_PREVIOUS mantiene token y cookies vigentes durante
 //     una rotación;
 //   - comparación timing-safe de digests SHA-256;
 //   - lockout por IP tras 5 fallos en 10 min (contador en D1, sin escribir
@@ -13,7 +13,9 @@
 //     token ausente de erróneo, y el valor recibido no se loguea nunca.
 const VENTANA_MS = 10 * 60 * 1000;
 const BLOQUEO_TRAS = 5;
-const SESION_MS = 12 * 60 * 60 * 1000;
+// 400 días: el techo de Max-Age que los navegadores imponen a las cookies —
+// "permanente" en la práctica (la puerta sigue siendo el token, no la sesión)
+const SESION_MS = 400 * 24 * 60 * 60 * 1000;
 const encoder = new TextEncoder();
 
 const digest = (texto) => crypto.subtle.digest("SHA-256", encoder.encode(texto));
